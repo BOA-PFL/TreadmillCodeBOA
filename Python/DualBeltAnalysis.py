@@ -37,17 +37,6 @@ def findTakeoffs(force):
             lto.append(step + 1)
     return lto
 
-def trimLandings(landings, takeoffs):
-    trimTakeoffs = landings
-    if len(takeoffs) > len(landings) and takeoffs[0] > landings[0]:
-        del(trimTakeoffs[0])
-    return(trimTakeoffs)
-
-def trimTakeoffs(landings, takeoffs):
-    if len(takeoffs) < len(landings):
-        del(landings[-1])
-    return(landings)
-
 
 def calcVLR(force, startVal, lengthFwd):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
@@ -123,13 +112,6 @@ for file in entries:
         landings = findLandings(forceZ)
         takeoffs = findTakeoffs(forceZ)
                 
-        ### to delete ###
-        
-        #plt.plot(forceZ[landings[10]:landings[10]+800])
-
-        #plt.plot(brakeFilt[landings[10]:landings[10]+1000])
-        #sum(brakeFilt[landings[10]+10:landings[10]+400])
-        ## delete ##
         
         #For each landing, calculate rolling averages and time to stabilize
     
@@ -160,7 +142,7 @@ for file in entries:
 outcomes = pd.DataFrame({'Sub':list(sName), 'Config': list(tmpConfig), 'TimePoint':list(timeP),'NL':list(NL),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR)})
 
-df2 = pd.DataFrame(pd.concat(vertForce), np.concatenate(longConfig))    
+#df2 = pd.DataFrame(pd.concat(vertForce), np.concatenate(longConfig))    
 
 #longDat = pd.concat(vertForce, ignore_index = True)
 #longDat2['Config'] = pd.DataFrame(np.concatenate(longConfig))
