@@ -4,7 +4,7 @@ clf
 
 % Data files should be named Subject_Shoe_Movement_Timepoint - Forces
 %input_dir = 'C:\Users\Daniel.Feeney\Dropbox (Boa)\Endurance Protocol Trail Run\Michel_LaSportiva\RunData';% Change to correct filepath
-input_dir = 'C:\Users\kate.harrison\Dropbox (Boa)\Endurance Health Validation\TreadmillData';
+input_dir = 'C:\Users\daniel.feeney\Dropbox (Boa)\Endurance Health Validation\TreadmillData';
 direction = 1; % If level or uphill = 1 (forwards); If downhill = 2 (backwards)
 
 % line = {'-k','-g', '-b','-r'}; % Add enough line colors for each shoe.

@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Sep 23 11:38:57 2020
+Created on Mon Jan 11 09:24:01 2021
 
 @author: Daniel.Feeney
 """
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +16,6 @@ fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 
 # Read in balance file
-fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/EnduranceProtocolWork/WalkData/Forces/'
 fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/EnduranceProtocolWork/EnduranceProtocolHike/TMForces/'
 entries = os.listdir(fPath)
 
@@ -79,7 +77,7 @@ timeP = []
 NL = []
 PkMed = []
 PkLat = []
-
+Level = []
 # Save Time series data in separate DF #
 vertForce = []
 longConfig = []
@@ -93,13 +91,15 @@ for file in entries:
         fName = file #Load one file at a time
         
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
+        UpDown = fName.split(sep="_")[3]
+        UpDown = UpDown.split(sep=' - ')[0]
         #Parse file name into subject and configuration 
         subName = fName.split(sep = "_")[0]
         config = fName.split(sep = "_")[2]
         config = config.split(sep = ' - ')[0]
         #timePoint = fName.split(sep = "_")[3]
-        dat['LForceY'] = dat['LForceY'].fillna(0) #removing the often NA first 3-10 entries
         
+        dat['LForceY'] = dat['LForceY'].fillna(0) #removing the often NA first 3-10 entries
         # Filter force
         forceZ = dat.LForceZ * -1
         forceZ[forceZ<fThresh] = 0
@@ -131,6 +131,7 @@ for file in entries:
                 brakeImpulse.append(sum(brakeFilt[landing+10:landing+nextLanding]))
                 sName.append(subName)
                 tmpConfig.append(config)
+                Level.append(UpDown)
                 #timeP.append(timePoint)
                 peakBrakeF.append(calcPeakBrake(brakeFilt,landing, 600))
                 VLR.append(calcVLR(forceZ, landing, 200))
@@ -148,7 +149,7 @@ for file in entries:
     except:
             print(file)
 
-outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
+outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'Level':list(Level),'NL':list(NL),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
 
 #df2 = pd.DataFrame(pd.concat(vertForce), np.concatenate(longConfig))    
