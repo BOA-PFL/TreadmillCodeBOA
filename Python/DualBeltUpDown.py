@@ -100,12 +100,14 @@ for file in entries:
         #timePoint = fName.split(sep = "_")[3]
         
         dat['LForceY'] = dat['LForceY'].fillna(0) #removing the often NA first 3-10 entries
+        
+        #dat.LForceZ = dat.LForceZ + 1260
         # Filter force
         forceZ = dat.LForceZ * -1
         forceZ[forceZ<fThresh] = 0
         brakeForce = dat.LForceY[0:59999] * -1
         MForce = dat.LForceX[0:59999] 
-        
+        #brakeForce = brakeForce - 160
         
         fs = 1000 #Sampling rate
         t = np.arange(59999) / fs
