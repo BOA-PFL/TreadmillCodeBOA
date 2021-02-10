@@ -17,7 +17,7 @@ headerList = ['zero','one','two','three','four','five','six','seven','eight','t'
  'Te', 'Ttot', 'Ti/Ttot', 'VD/VTe',	'LogVE', 'tRel', 'markSpeed', 'markDist', 'Phase time', 'VO2/Kg%Pred','BR',	
  'VT/Ti', 'HRR', 'PaCO2_e']
 
-fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/Metabolic (21 of 24)/'
+fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/Metabolic (24 of 24)/'
 entries = os.listdir(fPath)
 
 for file in entries:
@@ -60,7 +60,7 @@ for file in entries:
                       'Temp':list([np.mean(tp1['AmbTemp']), np.mean(tp2['AmbTemp']), np.mean(tp3['AmbTemp']), np.mean(tp4['AmbTemp']),
                                    np.mean(tp5['AmbTemp']), np.mean(tp6['AmbTemp']), np.mean(tp7['AmbTemp']), np.mean(tp8['AmbTemp'])])})
         
-        outcomes.to_csv('C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/MetResults8Pts.csv', mode='a', header=False)
+        outcomes.to_csv('C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/MetResults4Appd.csv', mode='a', header=False)
     except:
         print(file)
 

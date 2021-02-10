@@ -23,10 +23,10 @@ headerList = ['zero','one','two','three','four','five','six','seven','eight','t'
  'Te', 'Ttot', 'Ti/Ttot', 'VD/VTe',	'LogVE', 'tRel', 'markSpeed', 'markDist', 'Phase time', 'VO2/Kg%Pred','BR',	
  'VT/Ti', 'HRR', 'PaCO2_e']
 
-fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/Metabolic (21 of 24)/'
+fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/Metabolic (24 of 24)/'
 entries = os.listdir(fPath)
 
-for file in entries:
+for file in entries[63:71]:
     try:
         fName = file
         
