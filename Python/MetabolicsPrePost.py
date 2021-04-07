@@ -26,7 +26,7 @@ headerList = ['zero','one','two','three','four','five','six','seven','eight','t'
 fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/Metabolic (27 of 27)/'
 entries = os.listdir(fPath)
 
-for file in entries[72:86]:
+for file in entries:
     try:
         fName = file
         
@@ -36,29 +36,28 @@ for file in entries[72:86]:
         dat['t'] = pd.to_timedelta(dat['t'].astype(str)) #Convert time to time delta from start
         
         tp1 = dat[(dat['t'] > '0 days 00:05:00') & (dat['t'] < '0 days 00:07:00')].reset_index()
-        tp2 = dat[(dat['t'] > '0 days 00:10:00') & (dat['t'] < '0 days 00:12:00')].reset_index()
-        tp3 = dat[(dat['t'] > '0 days 00:14:00') & (dat['t'] < '0 days 00:16:00')].reset_index()
-        tp4 = dat[(dat['t'] > '0 days 00:25:00') & (dat['t'] < '0 days 00:27:00')].reset_index()
+        tp2 = dat[(dat['t'] > '0 days 00:07:00') & (dat['t'] < '0 days 00:09:00')].reset_index()
+        tp3 = dat[(dat['t'] > '0 days 00:09:00') & (dat['t'] < '0 days 00:11:00')].reset_index()
+        tp4 = dat[(dat['t'] > '0 days 00:38:00') & (dat['t'] < '0 days 00:40:00')].reset_index()
+        tp5 = dat[(dat['t'] > '0 days 00:40:00') & (dat['t'] < '0 days 00:42:00')].reset_index()
+        tp6 = dat[(dat['t'] > '0 days 00:36:00') & (dat['t'] < '0 days 00:38:00')].reset_index()
         
+
+        diff1 = np.mean(tp4['EEm']) - np.mean(tp1['EEm'])
+        diff2 = np.mean(tp5['EEm']) - np.mean(tp2['EEm'])
+        diff3 = np.mean(tp6['EEm']) - np.mean(tp3['EEm'])
+        diff4 = np.mean(tp4['EEm']) - np.mean(tp2['EEm'])
+        diff5 = np.mean(tp5['EEm']) - np.mean(tp1['EEm'])
         
-        # plt.plot(tp1['EEm'], label='TP1')
-        # plt.plot(tp2['EEm'], label = 'TP2')
-        # plt.plot(tp3['EEm'], label = 'TP3')
-        # plt.plot(tp4['EEm'], label = 'TP4')
-        # plt.legend()
-        
-        conditions = np.array(['TP1','TP2','TP3','TP4'])
+        conditions = np.array(['TP1','TP2','TP3','TP4','TP5'])
         Subject = list(np.repeat(fName.split('_')[0],len(conditions)))
         Order = list(np.repeat(fName.split('_')[1],len(conditions)))
         Config = list(np.repeat(fName.split('_')[2],len(conditions)))
         
         outcomes = pd.DataFrame({'Subject':list(Subject),'TimePoints':list(conditions), 'Order':list(Order), 'Config':list(Config),
-                      'EEm':list([np.mean(tp1['EEm']), np.mean(tp2['EEm']), np.mean(tp3['EEm']), np.mean(tp4['EEm'])]),
-                      'HR':list([np.mean(tp1['HR']), np.mean(tp2['HR']), np.mean(tp3['HR']), np.mean(tp4['HR'])]),
-                      'Temp':list([np.mean(tp1['AmbTemp']), np.mean(tp2['AmbTemp']), np.mean(tp3['AmbTemp']), np.mean(tp4['AmbTemp'])]),
-                      'VO2':list([np.mean(tp1['VO2/Kg']), np.mean(tp2['VO2/Kg']), np.mean(tp3['VO2/Kg']), np.mean(tp4['VO2/Kg'])])})
+                      'differences':list([diff1, diff2, diff3, diff4, diff5])})
         
-        outcomes.to_csv('C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/MetResults311.csv', mode='a', header=False)
+        outcomes.to_csv('C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/MetDiffLarge.csv', mode='a', header=False)
     except:
         print(file)
 

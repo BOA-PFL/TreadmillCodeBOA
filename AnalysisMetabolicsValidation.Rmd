@@ -1,0 +1,129 @@
+---
+title: "MetabolicResults"
+output: html_document
+---
+
+## clear workspace, import data including new weight data and merge dataframes
+```{r}
+rm(list=ls())
+
+
+library(tidyverse)
+library(lme4)
+library(emmeans)
+
+dat <- read.csv('C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/MetResults13.csv') # With 13 time points
+weightNew <- read.csv('C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/Metabolic (31 of 31)/MetabolicTrialResults/weights2.csv') #correcting for different mass each day
+weightNew <- rename(weightNew, Subject = ï..Subject)
+weightNew <- rename(weightNew, Config = Condition)
+
+dat <- merge(dat, weightNew)
+dat$TimePoints <- as.factor(dat$TimePoints)
+dat['EEmTmp'] <- dat$EEm * dat$Ratio
+
+dat$TimePoints <- factor(dat$TimePoints, levels = c("TP1","TP2","TP3","TP4","TP5","TP6","TP7","TP8","TP9","TP10", "TP11","TP12","TP13"))
+
+ggplot(data = dat, mapping = aes(x = as.factor(TimePoints), y = EEmTmp, fill = Config)) + geom_point(size = 2, aes(color = Config)) + facet_wrap( ~ Subject ) + ylab('Energetic Expenditure (W/kg)') + xlab('Time Point') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+
+
+### Use token outlier removal and remove non-physiological energetic expenditures (below 5). Multiply EEm (after removing outliers, EEm2 by the ratio of mass)
+```{r}
+### Outlier removal based on 25 quantile - 1.5* IQR or 75 + 1.5*IQR ###
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+  mn <- mean(x, na.rm = TRUE)
+  std <- sd(x, na.rm = TRUE)
+  y <- x
+  y[x < (mn - 1.96*std)] <- NA
+  y[x > (mn + 1.96*std)] <- NA
+  y
+}
+# Level
+dat <- dat %>%
+  group_by(Subject, Config) %>%
+  mutate(
+    EEm2 = remove_outliers(EEm)
+  )
+dat <- subset(dat, dat$EEm2 > 5) # removing one non physiological rates not detected by the outlier
+dat['EEmFixed'] <- dat$EEm2 * dat$Ratio
+
+ggplot(data = dat, mapping = aes(x = as.factor(TimePoints), y = EEmFixed, fill = Config)) + geom_point(aes(color = Config)) +
+  facet_wrap( ~ Subject ) 
+```
+
+## Run simple model with EEm on configuration and time points with a sub-specific intercept and subject-specific slope between configs. Adding temperature into the model to control for any small changes we saw
+```{r}
+mod1 <- lmer(EEmFixed ~ Config + as.factor(TimePoints) + Temp + (1|Subject), data = dat)
+summary(mod1)
+modnull <- lmer(EEmFixed ~ + as.factor(TimePoints) + Temp + (1|Subject), data = dat)
+anova(mod1,modnull)
+
+
+conditions.emm <- emmeans(mod1, "Config")
+contrast(conditions.emm, "trt.vs.ctrl", ref = "SL") #p-value of 0.036 for dual dial vs lace, estimated 1.6% improvement
+
+```
+```{r}
+ggplot(data = dat, mapping = aes(x = as.factor(TimePoints), y = Temp, color = Config)) + geom_point() + facet_wrap(~Subject)
+
+```
+
+
+# Below is removing subjects based on temperature. I do not think we should do this because it lowers our statistical power.
+# Subjects 26, 29, and 30 have high temperatures for the SL day (greater than 1 degree difference). Let's try removing them and don't include Temperature in the model. 
+# Subject 4 has a high temp for DD. 
+# The question is adding tempature into the model sufficient? If so, we don't need to drop these subjects. 
+# Asking a physiologist, they said slight temperature fluctuations should NOT impact energetic expenditure that much
+```{r}
+#reducedDat <- subset(dat, !( dat$Subject == 26 & dat$Config == 'SL'))
+reducedDat <- subset(dat, !( dat$Subject == 29 & dat$Config == 'SL'))
+reducedDat <- subset(reducedDat, !( reducedDat$Subject == 30 & reducedDat$Config == 'SL'))
+reducedDat <- subset(reducedDat, !( reducedDat$Subject == 4 & reducedDat$Config == 'DD'))
+
+
+mod1 <- lmer(EEmFixed ~ Config + Temp + as.factor(TimePoints) + (1+Config|Subject), data = reducedDat)
+summary(mod1)
+modnull <- lmer(EEmFixed ~ Temp + as.factor(TimePoints)  + (1+Config|Subject), data = reducedDat)
+anova(mod1,modnull) #not significant
+
+
+conditions.emm <- emmeans(mod1, "Config")
+contrast(conditions.emm, "trt.vs.ctrl", ref = "SL")
+
+
+ggplot(data = reducedDat, mapping = aes(x = as.factor(TimePoints), y = EEmFixed, fill = Config)) + geom_point(aes(color = Config)) + facet_wrap( ~ Subject )
+```
+
+## We do not see sig differences when we drop those three subject time points
+
+
+# Look at pre/post only
+## Differences in met cost between early and later in testing. Found differences between last
+## few minutes and first few minutes for 4 observations per person per shoe
+
+```{r}
+diffDat <- read.csv('C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/MetDiff.csv')
+diffDat$Config <- as.factor(diffDat$Config)
+diffDat$TimePoints <- as.factor(diffDat$TimePoints)
+diffDat$Subject <- as.factor(diffDat$Subject)
+
+
+diffDat <- subset(diffDat, !( diffDat$Subject == 28 &  diffDat$Config == 'DD'))
+diffDat <- subset(diffDat, !( diffDat$Subject == 16 &  diffDat$Config == 'SL'))
+
+ggplot(data = diffDat, mapping = aes(x = Subject, y = differences, color = Config)) + geom_boxplot() + geom_hline(yintercept = 0) 
+
+mod1 <- lmer(differences ~ Config + (1|Subject), data = diffDat)
+summary(mod1)
+modnull <- lmer(differences ~ (1|Subject), data = diffDat)
+anova(mod1,modnull) 
+
+conditions.emm <- emmeans(mod1, "Config")
+contrast(conditions.emm, "trt.vs.ctrl", ref = "SL") #p-value of 0.12 for DD to lace
+
+```
+
+
+

@@ -4,7 +4,7 @@ clf
 
 % Data files should be named Subject_Shoe_Movement_Timepoint - Forces
 %input_dir = 'C:\Users\Daniel.Feeney\Dropbox (Boa)\Endurance Protocol Trail Run\Michel_LaSportiva\RunData';% Change to correct filepath
-input_dir = 'C:\Users\daniel.feeney\Dropbox (Boa)\Endurance Health Validation\TreadmillData';
+input_dir = 'C:\Users\Daniel.Feeney\Dropbox (Boa)\FBS Abstract\Running GRF';
 direction = 1; % If level or uphill = 1 (forwards); If downhill = 2 (backwards)
 
 % line = {'-k','-g', '-b','-r'}; % Add enough line colors for each shoe.
@@ -53,19 +53,19 @@ for s = 1:NumbFiles
     M = dlmread(fileLoc, '\t', 9, 0);
     M(isnan(M)) = 0;
     
-    Fz = M(100:40000,4);%vertical
+    Fz = M(100:4000,4);%vertical
     
     if direction == 1
-    Fy = -1.*M(100:40000,5);%antero-posterior
-    Fx = -1.*M(100:40000,6);%mediolateral
+    Fy = -1.*M(100:4000,5);%antero-posterior
+    Fx = -1.*M(100:4000,6);%mediolateral
     else
-    Fy = M(100:40000,5);%antero-posterior
-    Fx = M(100:40000,6);%mediolateral
+    Fy = M(100:4000,5);%antero-posterior
+    Fx = M(100:4000,6);%mediolateral
     end
     
     
-    fq = 1000; %Sampling frequency
-    fc = 50; %Cutoff frequency
+    fq = 100; %Sampling frequency
+    fc = 30; %Cutoff frequency
     
     [b,a] = butter(2,fc/(fq/2),'low'); %second order BW filter, filtfilt doubles the order
     Fz = filtfilt(b,a,Fz); Fz = (Fz * -1);
@@ -241,7 +241,7 @@ end
   KinData = num2cell(KinData);
   KinData = horzcat(subject,config,period,KinData);
   KinData = vertcat(ColTitles, KinData);
-  writecell(KinData, 'CompiledRunData.csv')
+  writecell(KinData, 'CompiledRunData2.csv')
   
 % figure(1)
 % legend([z(1).mainLine z(2).mainLine z(3).mainLine z(4).mainLine], periods{1}, periods{2}, periods{3}, periods{4})

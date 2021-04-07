@@ -42,7 +42,7 @@ def findTakeoffs(force):
 def calcVLR(force, startVal, lengthFwd):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
     # indices (n defined by lengthFwd). 
-    maxF = np.max(forceZ[startVal:startVal+lengthFwd])
+    maxF = np.max(force[startVal:startVal+lengthFwd])
     eightyPctMax = 0.8 * maxF
     twentyPctMax = 0.2 * maxF
     # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
