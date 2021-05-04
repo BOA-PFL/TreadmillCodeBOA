@@ -15,11 +15,12 @@ import seaborn as sns
 # Define constants and options
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
+plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 
 # Read in balance file
-fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/EnduranceProtocolWork/WalkData/Forces/'
-fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/EnduranceProtocolWork/EnduranceProtocolHike/TMForces/'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
 entries = os.listdir(fPath)
+
 
 # list of functions 
 # finding landings on the force plate once the filtered force exceeds the force threshold
@@ -93,9 +94,20 @@ for file in entries:
         fName = file #Load one file at a time
         
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
+        
+        fig, ax = plt.subplots()
+        ax.plot(dat.LForceZ, label = 'Right Total Force')
+        fig.legend()
+        print('Select start and end of analysis trial')
+        pts = np.asarray(plt.ginput(2, timeout=-1))
+        plt.close()
+        # downselect the region of the dataframe you'd like
+        dat = dat.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
+        dat = dat.reset_index()
+        
         #Parse file name into subject and configuration 
         subName = fName.split(sep = "_")[0]
-        config = fName.split(sep = "_")[2]
+        config = fName.split(sep = "_")[1]
         config = config.split(sep = ' - ')[0]
         #timePoint = fName.split(sep = "_")[3]
         dat['LForceY'] = dat['LForceY'].fillna(0) #removing the often NA first 3-10 entries
@@ -103,12 +115,12 @@ for file in entries:
         # Filter force
         forceZ = dat.LForceZ * -1
         forceZ[forceZ<fThresh] = 0
-        brakeForce = dat.LForceY[0:59999] * -1
-        MForce = dat.LForceX[0:59999] 
+        brakeForce = dat.LForceY[0:len(dat)] * -1
+        MForce = dat.LForceX[0:len(dat)] 
         
         
         fs = 1000 #Sampling rate
-        t = np.arange(59999) / fs
+        t = np.arange(len(dat)) / fs
         fc = 20  # Cut-off frequency of the filter
         w = fc / (fs / 2) # Normalize the frequency
         b, a = sig.butter(4, w, 'low')
@@ -151,45 +163,47 @@ for file in entries:
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
 
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021/WalkForceComb.csv",mode='a',header=False)
+
 #df2 = pd.DataFrame(pd.concat(vertForce), np.concatenate(longConfig))    
 
 #longDat = pd.concat(vertForce, ignore_index = True)
 #longDat2['Config'] = pd.DataFrame(np.concatenate(longConfig))
 #longDat['Sub'] = pd.DataFrame(np.concatenate(longSub))
 #longDat['TimePoint'] = pd.DataFrame(np.concatenate(timeIndex))
-
-outcomes[['peakBrake']] = -1 * outcomes[['peakBrake']]
-outcomes[['PkLat']] = -1 * outcomes[['PkLat']]
-cleanedOutcomes = outcomes[outcomes['brakeImpulse'] <= -1000]
-cleanedOutcomes[['brakeImpulse']] = -1 * cleanedOutcomes[['brakeImpulse']]
+if plottingEnabled == 1:
+    outcomes[['peakBrake']] = -1 * outcomes[['peakBrake']]
+    outcomes[['PkLat']] = -1 * outcomes[['PkLat']]
+    cleanedOutcomes = outcomes[outcomes['brakeImpulse'] <= -1000]
+    cleanedOutcomes[['brakeImpulse']] = -1 * cleanedOutcomes[['brakeImpulse']]
+        
     
-
-f, axes = plt.subplots(1,2)
-sns.boxplot(y='peakBrake', x='Subject', hue="Config",
-                 data=cleanedOutcomes, 
-                 palette="colorblind", ax=axes[0])
-
-sns.boxplot(y='VLR', x='Subject', hue = "Config", 
-                 data=cleanedOutcomes, 
-                 palette="colorblind", ax=axes[1])
-
-f, axes = plt.subplots(1,2)
-sns.boxplot(y='brakeImpulse', x='Subject', hue = "Config", 
-                 data=cleanedOutcomes, 
-                 palette="colorblind", ax=axes[0])
-
-sns.boxplot(y='NL', x='Subject', hue = "Config", 
-                 data=cleanedOutcomes, 
-                 palette="colorblind", ax=axes[1])
-plt.tight_layout()
-
-f, axes = plt.subplots(1,2)
-sns.boxplot(y='PkMed', x='Subject', hue="Config",
-                 data=cleanedOutcomes, 
-                 palette="colorblind", ax=axes[0])
-sns.boxplot(y='PkLat', x='Subject', hue="Config",
-                 data=cleanedOutcomes, 
-                 palette="colorblind", ax=axes[1])
+    f, axes = plt.subplots(1,2)
+    sns.boxplot(y='peakBrake', x='Subject', hue="Config",
+                     data=cleanedOutcomes, 
+                     palette="colorblind", ax=axes[0])
+    
+    sns.boxplot(y='VLR', x='Subject', hue = "Config", 
+                     data=cleanedOutcomes, 
+                     palette="colorblind", ax=axes[1])
+    
+    f, axes = plt.subplots(1,2)
+    sns.boxplot(y='brakeImpulse', x='Subject', hue = "Config", 
+                     data=cleanedOutcomes, 
+                     palette="colorblind", ax=axes[0])
+    
+    sns.boxplot(y='NL', x='Subject', hue = "Config", 
+                     data=cleanedOutcomes, 
+                     palette="colorblind", ax=axes[1])
+    plt.tight_layout()
+    
+    f, axes = plt.subplots(1,2)
+    sns.boxplot(y='PkMed', x='Subject', hue="Config",
+                     data=cleanedOutcomes, 
+                     palette="colorblind", ax=axes[0])
+    sns.boxplot(y='PkLat', x='Subject', hue="Config",
+                     data=cleanedOutcomes, 
+                     palette="colorblind", ax=axes[1])
 
 #
 #newForce = pd.concat(vertForce)

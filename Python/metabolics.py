@@ -20,7 +20,7 @@ headerList = ['zero','one','two','three','four','five','six','seven','eight','t'
 fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/FBS Abstract/Metabolic (31 of 31)/'
 entries = os.listdir(fPath)
 
-for file in entries[87:93]:
+for file in entries[93:96]:
     try:
         fName = file
         
@@ -44,19 +44,19 @@ for file in entries[87:93]:
         tp13 = dat[(dat['t'] > '0 days 00:38:00') & (dat['t'] < '0 days 00:41:00')].reset_index()
         
         
-        plt.plot(tp1['EEm'], label='TP1')
-        plt.plot(tp2['EEm'], label = 'TP2')
-        plt.plot(tp3['EEm'], label = 'TP3')
-        plt.plot(tp4['EEm'], label = 'TP4')
-        plt.plot(tp5['EEm'], label = 'TP5')
-        plt.plot(tp6['EEm'], label = 'TP6')
-        plt.plot(tp7['EEm'], label = 'TP7')
-        plt.plot(tp8['EEm'], label = 'TP8')
-        plt.plot(tp9['EEm'], label = 'TP9')
-        plt.plot(tp10['EEm'], label = 'TP10')
-        plt.xlabel('Time')
-        plt.ylabel('EE (W/kg)')
-        plt.legend()
+        # plt.plot(tp1['EEm'], label='TP1')
+        # plt.plot(tp2['EEm'], label = 'TP2')
+        # plt.plot(tp3['EEm'], label = 'TP3')
+        # plt.plot(tp4['EEm'], label = 'TP4')
+        # plt.plot(tp5['EEm'], label = 'TP5')
+        # plt.plot(tp6['EEm'], label = 'TP6')
+        # plt.plot(tp7['EEm'], label = 'TP7')
+        # plt.plot(tp8['EEm'], label = 'TP8')
+        # plt.plot(tp9['EEm'], label = 'TP9')
+        # plt.plot(tp10['EEm'], label = 'TP10')
+        # plt.xlabel('Time')
+        # plt.ylabel('EE (W/kg)')
+        # plt.legend()
         
         conditions = np.array(['TP1','TP2','TP3','TP4','TP5','TP6','TP7','TP8', 'TP9','TP10','TP11','TP12','TP13'])
         Subject = list(np.repeat(fName.split('_')[0],len(conditions)))
