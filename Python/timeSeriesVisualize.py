@@ -12,8 +12,9 @@ import scipy.signal as sig
 import seaborn as sns
 
 # Define constants and options
-fThresh = 80; #below this value will be set to 0.
-writeData = 0; #will write to spreadsheet if 1 entered
+fThresh = 80 #below this value will be set to 0.
+stepLen = 60
+falseStepBelow = 40
 
 # Read in balance file
 fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/EnduranceProtocolWork/TibiaForceData/'
@@ -66,24 +67,33 @@ for landing in landings:
         print(landing)
         
 # index into which landings are false
-stanceTime[stanceTime < 40]
-[x for x in stanceTime if x < 40]
+stanceTime = np.array(stanceTime)
+indToDel = np.argwhere(stanceTime < falseStepBelow) #find indices where stance time is less than 40 to remove
+stanceTime = stanceTime[stanceTime > falseStepBelow]
+landings = np.array(landings)
+landings = np.delete(landings, indToDel)
 
 # preallocate matrix for force and fill in with force data
-preForce = np.zeros((3,80))
-preTib = np.zeros((3,80))
-iterVar = 0
-for landing in landings:
-    preForce[iterVar,] = ankleForce[landing:landing+80]
-    preTib[iterVar,] = dat.TibialForce[landing:landing+80]
-    iterVar = iterVar +1
+preForce = np.zeros((3,stepLen))
+preTib = np.zeros((3,stepLen))
+
+for iterVar, landing in enumerate(landings):
+    try:
+        preForce[iterVar,] = ankleForce[landing:landing+stepLen]
+        preTib[iterVar,] = dat.TibialForce[landing:landing+stepLen]
+    except:
+        print(landing)
+
 
 # create matrices with average and SD of force trajectories
-x = np.linspace(0,80,80)
+x = np.linspace(0,stepLen,stepLen)
 avgF = np.mean(preForce, axis = 0)
 sdF = np.std(preForce, axis = 0)
 #Plot force
 plt.plot(x, avgF, 'k', color='#CC4F1B')
+plt.xlabel('Time')
+plt.ylabel('Force (N)')
+plt.title('Ensemble average ankle force')
 plt.fill_between(x, avgF-sdF, avgF+sdF,
     alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
     
@@ -92,6 +102,7 @@ avgTib = np.mean(preTib,axis=0)
 sdTib = np.std(preTib, axis = 0)
 #Plot average Tibial force 
 plt.plot(x, avgTib, 'k', color='#CC4F1B')
+plt.title('Ensemble average tibial force')
 plt.fill_between(x, avgTib-sdTib, avgTib+sdTib,
     alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
     
