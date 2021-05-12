@@ -12,12 +12,9 @@ import scipy.signal as sig
 import seaborn as sns
 
 # Define constants and options
-fThresh = 80 #below this value will be set to 0.
-stepLen = 60
-falseStepBelow = 40
 
 # Read in balance file
-fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/EnduranceProtocolWork/TibiaForceData/'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_Jan2021\\TMdata\\'
 entries = os.listdir(fPath)
 
 # list of functions 
@@ -25,7 +22,7 @@ entries = os.listdir(fPath)
 def findLandings(force):
     lic = []
     for step in range(len(force)-1):
-        if force[step] == 0 and force[step + 1] >= fThresh:
+        if force[step] == 0 and force[step + 1] >= 0:
             lic.append(step)
     return lic
 
@@ -33,76 +30,82 @@ def findLandings(force):
 def findTakeoffs(force):
     lto = []
     for step in range(len(force)-1):
-        if force[step] >= fThresh and force[step + 1] == 0:
+        if force[step] >= 0 and force[step + 1] == 0:
             lto.append(step + 1)
     return lto
+
+def delimitTrial(inputDF):
+    # generic function to plot and start/end trial #
+    fig, ax = plt.subplots()
+    ax.plot(inputDF.LForceZ, label = 'Left Force')
+    fig.legend()
+    pts = np.asarray(plt.ginput(2, timeout=-1))
+    plt.close()
+    outputDat = dat.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
+    outputDat = outputDat.reset_index()
+    return(outputDat)
+
+def defThreshold(inputDF):
+        # find threshold force
+        fig, ax = plt.subplots()
+        ax.plot(inputDF.LForceZ, label = 'Right Foot Force')
+        print('Select a point to represent 0 in the trial')
+        pts = np.asarray(plt.ginput(1, timeout=-1))
+        plt.close()
+        fThresh = pts[0][1]
+        return(fThresh)
     
-## Load file in
-fName = entries[2] #Load one file at a time
-        
-dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
+def trimForce(inputDF, threshForce):
+    forceTot = inputDF.LForceZ
+    forceTot[forceTot<threshForce] = 0
+    forceTot = np.array(forceTot)
+    return(forceTot)
 
-#Calcualte ankle and tibial forces
-ankleForce = dat.LeftAnkleForce * -1
-ankleForce[ankleForce<fThresh] = 0
-
-dat['TibialForce'] = ankleForce + (dat.LAnkleMomenty / 0.05)
-dat['PFForce'] = (dat.LAnkleMomenty / 0.05)
-
-#find the landings and offs of the FP as vectors from function above
-landings = findLandings(ankleForce)
-takeoffs = findTakeoffs(ankleForce)
-
-plt.plot(ankleForce)
-
-# Find landings, create np matrix for plotting
-stanceTime = []
-for landing in landings:
-    try:
-       # Define where next zero is
-        def condition(x): return x <= 0 
-        zeros = [idx for idx, element in enumerate(np.array(ankleForce[landing:landing+100])) if condition(element)]
-        stanceTime.append(zeros[1])
-    except:
-        print(landing)
-        
-# index into which landings are false
-stanceTime = np.array(stanceTime)
-indToDel = np.argwhere(stanceTime < falseStepBelow) #find indices where stance time is less than 40 to remove
-stanceTime = stanceTime[stanceTime > falseStepBelow]
-landings = np.array(landings)
-landings = np.delete(landings, indToDel)
 
 # preallocate matrix for force and fill in with force data
-preForce = np.zeros((3,stepLen))
-preTib = np.zeros((3,stepLen))
+def forceMatrix(inputForce, landings, noSteps, stepLength):
+    #input a force signal, return matrix with n rows (for each landing) by m col
+    #for each point in stepLen
+    preForce = np.zeros((noSteps,stepLength))
+    
+    for iterVar, landing in enumerate(landings):
+        try:
+            preForce[iterVar,] = inputForce[landing:landing+stepLength]
+        except:
+            print(landing)
+            
+    return preForce
 
-for iterVar, landing in enumerate(landings):
-    try:
-        preForce[iterVar,] = ankleForce[landing:landing+stepLen]
-        preTib[iterVar,] = dat.TibialForce[landing:landing+stepLen]
-    except:
-        print(landing)
+## Load file in
+fName = entries[1] #Load one file at a time
+        
+dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
+dat.LForceZ = dat.LForceZ * -1
 
+print('Select start and end of analysis trial')
+forceDat = delimitTrial(dat)
+forceThresh = defThreshold(forceDat)
+trimmedForce = trimForce(forceDat, forceThresh)
+
+
+#find the landings and offs of the FP as vectors from function above
+landings = findLandings(trimmedForce)
+takeoffs = findTakeoffs(trimmedForce)
+
+stepLen = 40
+x = np.linspace(0,stepLen,stepLen)
+stackedF = forceMatrix(trimmedForce, landings, 5, stepLen)
 
 # create matrices with average and SD of force trajectories
 x = np.linspace(0,stepLen,stepLen)
-avgF = np.mean(preForce, axis = 0)
-sdF = np.std(preForce, axis = 0)
+avgF = np.mean(stackedF, axis = 0)
+sdF = np.std(stackedF, axis = 0)
 #Plot force
 plt.plot(x, avgF, 'k', color='#CC4F1B')
 plt.xlabel('Time')
 plt.ylabel('Force (N)')
-plt.title('Ensemble average ankle force')
+plt.title('Treadmill vertical force')
 plt.fill_between(x, avgF-sdF, avgF+sdF,
     alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
-    
-#Average Tibial force
-avgTib = np.mean(preTib,axis=0)
-sdTib = np.std(preTib, axis = 0)
-#Plot average Tibial force 
-plt.plot(x, avgTib, 'k', color='#CC4F1B')
-plt.title('Ensemble average tibial force')
-plt.fill_between(x, avgTib-sdTib, avgTib+sdTib,
-    alpha=0.5, edgecolor='#CC4F1B', facecolor='#FF9848')
-    
+plt.ylim([0,2200])
+   
