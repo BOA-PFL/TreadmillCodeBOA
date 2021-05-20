@@ -134,26 +134,21 @@ for file in entries:
         
         #For each landing, calculate rolling averages and time to stabilize
     
-        for landing in landings:
+        for countVar, landing in enumerate(landings):
             try:
                # Define where next zero is
                 nextLanding = findNextZero(brakeFilt[landing:landing+600],600)
                 NL.append(nextLanding)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
-                brakeImpulse.append(sum(brakeFilt[landing+10:landing+nextLanding]))
+                brakeImpulse.append(sum(brakeFilt[landing:takeoffs[countVar]]))
                 sName.append(subName)
                 tmpConfig.append(config)
                 #timeP.append(timePoint)
                 peakBrakeF.append(calcPeakBrake(brakeFilt,landing, 600))
                 VLR.append(calcVLR(forceZ, landing, 200))
-                PkMed.append(np.max(MForce[landing:landing+600]))
-                PkLat.append(np.min(MForce[landing:landing+600]))
+                PkMed.append(np.max(MForce[landing:takeoffs[countVar]]))
+                PkLat.append(np.min(MForce[landing:takeoffs[countVar]]))
                 
-                ## Time series Saving ##
-                timeIndex.append(np.arange(0,800))
-                vertForce.append(forceZ[landing:landing+800])
-                longConfig.append(np.repeat(config, 800))
-                longSub.append(np.repeat(subName,800))
             except:
                 print(landing)
         
