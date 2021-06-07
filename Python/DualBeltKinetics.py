@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Sep 23 11:38:57 2020
+Created on Mon Jun  7 11:33:33 2021
 
 @author: Daniel.Feeney
 """
@@ -18,7 +18,7 @@ writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 
 # Read in balance file
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\Data\\'
 entries = os.listdir(fPath)
 
 
@@ -87,6 +87,8 @@ longConfig = []
 longSub = []
 timeIndex = []
 
+
+## Y is ankle sagittal moment
 ## loop through the selected files
 for file in entries:
     try:
@@ -96,7 +98,7 @@ for file in entries:
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
         
         fig, ax = plt.subplots()
-        ax.plot(dat.LForceZ, label = 'Right Total Force')
+        ax.plot(dat.ForcesZ, label = 'Right Total Force')
         fig.legend()
         print('Select start and end of analysis trial')
         pts = np.asarray(plt.ginput(2, timeout=-1))
@@ -110,16 +112,16 @@ for file in entries:
         config = fName.split(sep = "_")[1]
         config = config.split(sep = ' - ')[0]
         #timePoint = fName.split(sep = "_")[3]
-        dat['LForceY'] = dat['LForceY'].fillna(0) #removing the often NA first 3-10 entries
+        dat.ForcesY = dat.ForcesY.fillna(0) #removing the often NA first 3-10 entries
         
         # Filter force
-        forceZ = dat.LForceZ * -1
+        forceZ = dat.ForcesZ * -1
         forceZ[forceZ<fThresh] = 0
-        brakeForce = dat.LForceY[0:len(dat)] * -1
-        MForce = dat.LForceX[0:len(dat)] 
+        brakeForce = dat.ForcesY[0:len(dat)] * -1
+        MForce = dat.ForcesX[0:len(dat)] 
         
         
-        fs = 1000 #Sampling rate
+        fs = 200 #Sampling rate
         t = np.arange(len(dat)) / fs
         fc = 20  # Cut-off frequency of the filter
         w = fc / (fs / 2) # Normalize the frequency
@@ -158,64 +160,52 @@ for file in entries:
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021/WalkForceComb.csv",mode='a',header=False)
+#outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021/WalkForceComb.csv",mode='a',header=False)
 
-#df2 = pd.DataFrame(pd.concat(vertForce), np.concatenate(longConfig))    
 
-#longDat = pd.concat(vertForce, ignore_index = True)
-#longDat2['Config'] = pd.DataFrame(np.concatenate(longConfig))
-#longDat['Sub'] = pd.DataFrame(np.concatenate(longSub))
-#longDat['TimePoint'] = pd.DataFrame(np.concatenate(timeIndex))
-if plottingEnabled == 1:
-    outcomes[['peakBrake']] = -1 * outcomes[['peakBrake']]
-    outcomes[['PkLat']] = -1 * outcomes[['PkLat']]
-    cleanedOutcomes = outcomes[outcomes['brakeImpulse'] <= -1000]
-    cleanedOutcomes[['brakeImpulse']] = -1 * cleanedOutcomes[['brakeImpulse']]
-        
+def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):
     
-    f, axes = plt.subplots(1,2)
-    sns.boxplot(y='peakBrake', x='Subject', hue="Config",
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[0])
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
     
-    sns.boxplot(y='VLR', x='Subject', hue = "Config", 
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[1])
+    color = 'tab:red'
+    ax1.set_xlabel('time')
+    ax1.set_ylabel('TotalForce(N)', color=color)
+    ax1.plot(inputDF.forceCol, color=color, label = 'Total Force')
+    ax1.tick_params(axis='y', labelcolor=color)
     
-    f, axes = plt.subplots(1,2)
-    sns.boxplot(y='brakeImpulse', x='Subject', hue = "Config", 
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[0])
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
     
-    sns.boxplot(y='NL', x='Subject', hue = "Config", 
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[1])
-    plt.tight_layout()
+    ax2.set_ylabel(title) 
+    ax2.plot(inputDF.Xcol, label = 'X')
+    ax2.plot(inputDF.Ycol, label = 'Y')
+    ax2.plot(inputDF.Zcol, label = 'Z')
+    # ask matplotlib for the plotted objects and their labels
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1+h2, l1+l2, loc=2)
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.show()
     
-    f, axes = plt.subplots(1,2)
-    sns.boxplot(y='PkMed', x='Subject', hue="Config",
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[0])
-    sns.boxplot(y='PkLat', x='Subject', hue="Config",
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[1])
 
-#
-#newForce = pd.concat(vertForce)
-#newSub = pd.concat(longSub)
-#newConfig = pd.concat(longConfig)
-#newTry = {'vertForce': newForce,
-#        'Sub': newSub,
-#        'Config': newConfig
-#        }
-#
-#df = pd.DataFrame(newTry, columns = ['Force', 'Sub','Config'])
-#### 
-#fmri = sns.load_dataset("fmri")
-#sns.relplot(
-#    data=fmri, kind="line",
-#    x="timepoint", y="signal", col="region",
-#    hue="event", style="event",
-#)
+fig2 = plt.figure()
+ax1 = fig2.add_subplot(111)
 
-###
+color = 'tab:red'
+ax1.set_xlabel('time')
+ax1.set_ylabel('TotalForce(N)', color=color)
+ax1.plot(dat.ForcesZ, color=color, label = 'Total Force')
+ax1.tick_params(axis='y', labelcolor=color)
+
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+ax2.set_ylabel('Knee Moments') 
+ax2.plot(dat.LKneeMomentX, label = 'X')
+ax2.plot(dat.LKneeMomentY, label = 'Y')
+ax2.plot(dat.LKneeMomentZ, label = 'Z')
+# ask matplotlib for the plotted objects and their labels
+h1, l1 = ax1.get_legend_handles_labels()
+h2, l2 = ax2.get_legend_handles_labels()
+ax1.legend(h1+h2, l1+l2, loc=2)
+fig2.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.show()
