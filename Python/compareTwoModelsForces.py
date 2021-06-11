@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 29 09:45:18 2020
-Visualize shadded errorbars
+Created on Fri Jun 11 11:09:55 2021
+
 @author: Daniel.Feeney
 """
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import scipy.signal as sig
-import seaborn as sns
 
 # Define constants and options
 
@@ -77,22 +77,56 @@ def forceMatrix(inputForce, landings, noSteps, stepLength):
             
     return preForce
 
-## Load file in
-fName = entries[3] #Load one file at a time
+def filterForce(inputForce, sampFrq, cutoffFrq):
+        # low-pass filter the input force signals
+        #t = np.arange(len(inputForce)) / sampFrq
+        w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
+        b, a = sig.butter(4, w, 'low')
+        filtForce = sig.filtfilt(b, a, inputForce)
+        return(filtForce)
         
-dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
-dat.LForceZ = dat.LForceZ * -1
+# load data in
+fName = entries[2] #Load one file at a time
+fName2 = entries[3]
+config1 = fName.split('_')[2].split(' - ')[0]
+config2 = fName2.split('_')[2].split(' - ')[0]
 
-print('Select start and end of analysis trial')
+dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
+dat = dat.fillna(0)
+dat.LForceZ = dat.LForceZ * -1
+dat.LForceZ = filterForce(dat.LForceZ, 1000, 20)
+dat.LForceY = filterForce(dat.LForceY, 1000, 20)
+dat.LForceX = filterForce(dat.LForceX, 1000, 20)
+
+dat2 = pd.read_csv(fPath+fName2,sep='\t', skiprows = 8, header = 0) 
+dat2 = dat2.fillna(0)
+dat2.LForceZ = dat2.LForceZ * -1
+dat2.LForceZ = filterForce(dat2.LForceZ, 1000, 20)
+dat2.LForceY = filterForce(dat2.LForceY, 1000, 20)
+dat2.LForceX = filterForce(dat2.LForceX, 1000, 20)
+
+# Trim the trials to a smaller section # 
+print('Select start and end of analysis trial 1')
 forceDat = delimitTrial(dat)
 forceThresh = defThreshold(forceDat)
 trimmedForce = trimForce(forceDat, forceThresh)
-XtotalForce = dat.LForceX
-YtotalForce = dat.LForceY
+XtotalForce = forceDat.LForceX
+YtotalForce = forceDat.LForceY
+
+# Trim the trials to a smaller section # 
+print('Select start and end of analysis trial 2')
+forceDat2 = delimitTrial(dat2)
+forceThresh2 = defThreshold(forceDat2)
+trimmedForce2 = trimForce(forceDat2, forceThresh2)
+XtotalForce2 = forceDat2.LForceX
+YtotalForce2 = forceDat2.LForceY
 
 #find the landings and offs of the FP as vectors from function above
 landings = findLandings(trimmedForce, forceThresh)
 takeoffs = findTakeoffs(trimmedForce, forceThresh)
+#find the landings and offs of the FP as vectors from function above
+landings2 = findLandings(trimmedForce2, forceThresh2)
+takeoffs2 = findTakeoffs(trimmedForce2, forceThresh2)
 
 stepLen = 250
 x = np.linspace(0,stepLen,stepLen)
@@ -100,48 +134,57 @@ stackedF = forceMatrix(trimmedForce, landings, 10, stepLen)
 XforceOut = forceMatrix(XtotalForce, landings, 10, stepLen)
 YforceOut = forceMatrix(YtotalForce, landings, 10, stepLen)
 
+stackedF2 = forceMatrix(trimmedForce2, landings2, 10, stepLen)
+XforceOut2 = forceMatrix(XtotalForce2, landings2, 10, stepLen)
+YforceOut2 = forceMatrix(YtotalForce2, landings2, 10, stepLen)
+
 # create matrices with average and SD of force trajectories
 x = np.linspace(0,stepLen,stepLen)
 avgF = np.mean(stackedF, axis = 0)
 sdF = np.std(stackedF, axis = 0)
+avgF2 = np.mean(stackedF2, axis = 0)
+sdF2 = np.std(stackedF2, axis = 0)
 
 avgFX = np.mean(XforceOut, axis = 0)
 sdFX = np.std(XforceOut, axis = 0)
+avgFX2 = np.mean(XforceOut2, axis = 0)
+sdFX2 = np.std(XforceOut2, axis = 0)
 
 avgFY = np.mean(YforceOut, axis = 0)
 sdFY = np.std(YforceOut, axis = 0)
 avgFY = avgFY * -1
+avgFY2 = np.mean(YforceOut2, axis = 0)
+sdFY2 = np.std(YforceOut2, axis = 0)
+avgFY2 = avgFY2 * -1
 
 #####
-fig, (ax1, ax2, ax3) = plt.subplots(3)
-ax1.plot(x, avgF, 'k', color='#00966C', label = 'Z Force')
-#ax1.plot(x, avgF3, 'k', color='#000000', label = '{}'.format(config3))
+fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3)
+ax1.plot(x, avgF, 'k', color='#00966C', label = '{}'.format(config1))
+ax1.plot(x, avgF2, 'k', color='#000000', label = '{}'.format(config2))
 ax1.set_xlabel('Time')
 ax1.set_ylabel('Force (N)')
 ax1.set_title('Average Vertical Force')
 ax1.fill_between(x, avgF-sdF, avgF+sdF,
     alpha=0.5, edgecolor='#00966C', facecolor='#00966C')
-#ax1.fill_between(x, avgF3-sdF3, avgF3+sdF3,
-#    alpha=0.5, edgecolor='#000000', facecolor='#000000')
-
-ax2.plot(x, avgFX, 'k', color='#00966C', label = 'X Force')
-#ax2.plot(x, avgXF3, 'k', color='#000000', label = '{}'.format(config3))
+ax1.fill_between(x, avgF2-sdF2, avgF2+sdF2,
+   alpha=0.5, edgecolor='#000000', facecolor='#000000')
+ax2.plot(x, avgFX, 'k', color='#00966C', label = '{}'.format(config1))
+ax2.plot(x, avgFX2, 'k', color='#000000', label = '{}'.format(config2))
 ax2.set_xlabel('Time')
 ax2.set_ylabel('Force (N)')
 ax2.set_title('Average M-L Force')
-ax2.fill_between(x, avgFX-sdFX, avgFX+sdFX,
+ax2.fill_between(x, avgFX2-sdFX, avgFX+sdFX,
     alpha=0.5, edgecolor='#00966C', facecolor='#00966C')
-#ax2.fill_between(x, avgXF3-sdXF3, avgXF3+sdXF3,
-#    alpha=0.5, edgecolor='#000000', facecolor='#000000')
+ax2.fill_between(x, avgFX2-sdFX2, avgFX2+sdFX2,
+    alpha=0.5, edgecolor='#000000', facecolor='#000000')
 ax2.legend(loc = 'right')
-ax3.plot(x, avgFY, 'k', color='#00966C', label = 'Y Force')
-#ax3.plot(x, avgYF3, 'k', color='#000000', label = '{}'.format(config3))
+ax3.plot(x, avgFY, 'k', color='#00966C', label = '{}'.format(config1))
+ax3.plot(x, avgFY2, 'k', color='#000000', label = '{}'.format(config2))
 ax3.set_xlabel('Time')
 ax3.set_ylabel('Force (N)')
 ax3.set_title('Average A-P Force')
 ax3.fill_between(x, avgFY-sdFY, avgFY+sdFY,
     alpha=0.5, edgecolor='#00966C', facecolor='#00966C')
-#ax3.fill_between(x, avgYF3-sdYF3, avgYF3+sdYF3,
-#    alpha=0.5, edgecolor='#000000', facecolor='#000000')
-#plt.suptitle('{} Skater Jump'.format(subName))
+ax3.fill_between(x, avgFY2-sdFY2, avgFY2+sdFY2,
+    alpha=0.5, edgecolor='#000000', facecolor='#000000')
 plt.tight_layout()
