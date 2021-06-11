@@ -18,7 +18,7 @@ writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 
 # Read in balance file
-fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\Data\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\\'
 entries = os.listdir(fPath)
 
 
@@ -68,6 +68,31 @@ def findNextZero(force, length):
     return step
 
 
+def delimitTrial(inputDF):
+    # generic function to plot and start/end trial #
+    fig, ax = plt.subplots()
+    ax.plot(inputDF.LForceZ, label = 'Left Force')
+    fig.legend()
+    pts = np.asarray(plt.ginput(2, timeout=-1))
+    plt.close()
+    outputDat = inputDF.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
+    outputDat = outputDat.reset_index()
+    return(outputDat)
+
+def filterForce(inputForce, sampFrq, cutoffFrq):
+        # low-pass filter the input force signals
+        #t = np.arange(len(inputForce)) / sampFrq
+        w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
+        b, a = sig.butter(4, w, 'low')
+        filtForce = sig.filtfilt(b, a, inputForce)
+        return(filtForce)
+    
+def trimForce(inputDF, threshForce):
+    forceTot = inputDF.LForceZ
+    forceTot[forceTot<threshForce] = 0
+    forceTot = np.array(forceTot)
+    return(forceTot)
+
 #Preallocation
 loadingRate = []
 peakBrakeF = []
@@ -87,48 +112,31 @@ longConfig = []
 longSub = []
 timeIndex = []
 
-
-## Y is ankle sagittal moment
 ## loop through the selected files
 for file in entries:
     try:
         
         fName = file #Load one file at a time
         
-        dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
+        dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
+        dat = dat.fillna(0)
+        dat.LForceZ = -1 * dat.LForceZ
+        dat.LForceZ = filterForce(dat.LForceZ, 1000, 20)
+        dat.LForceY = filterForce(dat.LForceY, 1000, 20)
+        dat.LForceX = filterForce(dat.LForceX, 1000, 20)
         
-        fig, ax = plt.subplots()
-        ax.plot(dat.ForcesZ, label = 'Right Total Force')
-        fig.legend()
-        print('Select start and end of analysis trial')
-        pts = np.asarray(plt.ginput(2, timeout=-1))
-        plt.close()
-        # downselect the region of the dataframe you'd like
-        dat = dat.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
-        dat = dat.reset_index()
+        # Trim the trials to a smaller section and threshold force
+        print('Select start and end of analysis trial 1')
+        forceDat = delimitTrial(dat)
+        forceZ = trimForce(forceDat, fThresh)
+        MForce = forceDat.LForceX
+        brakeFilt = forceDat.LForceY * -1
         
         #Parse file name into subject and configuration 
         subName = fName.split(sep = "_")[0]
         config = fName.split(sep = "_")[1]
         config = config.split(sep = ' - ')[0]
-        #timePoint = fName.split(sep = "_")[3]
-        dat.ForcesY = dat.ForcesY.fillna(0) #removing the often NA first 3-10 entries
-        
-        # Filter force
-        forceZ = dat.ForcesZ * -1
-        forceZ[forceZ<fThresh] = 0
-        brakeForce = dat.ForcesY[0:len(dat)] * -1
-        MForce = dat.ForcesX[0:len(dat)] 
-        
-        
-        fs = 200 #Sampling rate
-        t = np.arange(len(dat)) / fs
-        fc = 20  # Cut-off frequency of the filter
-        w = fc / (fs / 2) # Normalize the frequency
-        b, a = sig.butter(4, w, 'low')
-        brakeForce[0] = 0
-        brakeFilt = sig.filtfilt(b, a, brakeForce)
-        
+                
         #find the landings and offs of the FP as vectors
         landings = findLandings(forceZ)
         takeoffs = findTakeoffs(forceZ)
@@ -140,7 +148,7 @@ for file in entries:
             try:
                # Define where next zero is
                 VLR.append(calcVLR(forceZ, landing, 200))
-                nextLanding = findNextZero(brakeFilt[landing:landing+600],600)
+                nextLanding = findNextZero( np.array(brakeFilt[landing:landing+1000]),1000 )
                 NL.append(nextLanding)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
                 brakeImpulse.append(sum(brakeFilt[landing:takeoffs[countVar]]))
@@ -159,9 +167,6 @@ for file in entries:
 
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
-
-#outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021/WalkForceComb.csv",mode='a',header=False)
-
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):
     
