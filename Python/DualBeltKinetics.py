@@ -18,7 +18,7 @@ writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 
 # Read in balance file
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Kinetics TM\\'
 entries = os.listdir(fPath)
 
 
@@ -193,24 +193,3 @@ def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):
     plt.show()
     
 
-fig2 = plt.figure()
-ax1 = fig2.add_subplot(111)
-
-color = 'tab:red'
-ax1.set_xlabel('time')
-ax1.set_ylabel('TotalForce(N)', color=color)
-ax1.plot(dat.ForcesZ, color=color, label = 'Total Force')
-ax1.tick_params(axis='y', labelcolor=color)
-
-ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-
-ax2.set_ylabel('Knee Moments') 
-ax2.plot(dat.LKneeMomentX, label = 'X')
-ax2.plot(dat.LKneeMomentY, label = 'Y')
-ax2.plot(dat.LKneeMomentZ, label = 'Z')
-# ask matplotlib for the plotted objects and their labels
-h1, l1 = ax1.get_legend_handles_labels()
-h2, l2 = ax2.get_legend_handles_labels()
-ax1.legend(h1+h2, l1+l2, loc=2)
-fig2.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.show()
