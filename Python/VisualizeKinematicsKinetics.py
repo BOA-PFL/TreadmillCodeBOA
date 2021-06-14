@@ -177,7 +177,7 @@ dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
 
 dat.ForcesZ = dat.ForcesZ * -1
 
-#### 
+#### Trim data to begin and end in a flight phase
 print('Select start and end of analysis trial')
 forceDat = delimitTrial(dat)
 forceThresh = defThreshold(forceDat)
@@ -201,6 +201,18 @@ HipFlex = dat.LHipFlexion
 HipAbd = dat.LHipAbduction
 HipInt = dat.LHipRotation
 
+AnkleMomX = dat.LAnkleMomentx
+AnkleMomY = dat.LAnkleMomenty
+AnkleMomZ = dat.LAnkleMomentz
+
+KneeMomX = dat.LKneeMomentX
+KneeMomY = dat.LKneeMomentY
+KneeMomZ = dat.LKneeMomentZ
+
+HipMomX = dat.LHipMomentx
+HipMomY = dat.LHipMomenty
+HipMomZ = dat.LHipMomentz
+
 #find the landings and offs of the FP as vectors from function above
 landings = findLandings(trimmedForce, forceThresh)
 takeoffs = findTakeoffs(trimmedForce, forceThresh)
@@ -208,7 +220,8 @@ takeoffs = findTakeoffs(trimmedForce, forceThresh)
 # create an x-axis
 stepLen = 250
 x = np.linspace(0,stepLen,stepLen)
-# stack force data
+
+# stack data in order to allow ensemble averaging
 stackedF = forceMatrix(trimmedForce, landings, 10, stepLen)
 XforceOut = forceMatrix(XtotalForce, landings, 10, stepLen)
 YforceOut = forceMatrix(YtotalForce, landings, 10, stepLen)
@@ -222,14 +235,26 @@ AnkleFlexionOut = forceMatrix(AnkleFlexion, landings, 10, stepLen)
 AnkleInversionOut = forceMatrix(AnkleInversion, landings, 10, stepLen)
 AnkleAbdOut = forceMatrix(AnkleAbd, landings, 10, stepLen)
 
+AnkleMomXOut = forceMatrix(AnkleMomX, landings, 10, stepLen)
+AnkleMomYOut = forceMatrix(AnkleMomY, landings, 10, stepLen)
+AnkleMomZOut = forceMatrix(AnkleMomZ, landings, 10, stepLen)
+
 # Knee
 KneeFlexionOut = forceMatrix(KneeFlex, landings, 10, stepLen)
 KneeRotationnOut = forceMatrix(KneeRot, landings, 10, stepLen)
+
+KneeMomXOut = forceMatrix(KneeMomX, landings, 10, stepLen)
+KneeMomYOut = forceMatrix(KneeMomY, landings, 10, stepLen)
+KneeMomZOut = forceMatrix(KneeMomZ, landings, 10, stepLen)
 
 #Hip 
 HipFlexionOut = forceMatrix(HipFlex, landings, 10, stepLen)
 HipIntOut = forceMatrix(HipInt, landings, 10, stepLen)
 HipAbdOut = forceMatrix(HipAbd, landings, 10, stepLen)
+
+HipMomXOut = forceMatrix(HipMomX, landings, 10, stepLen)
+HipMomYOut = forceMatrix(HipMomY, landings, 10, stepLen)
+HipMomZOut = forceMatrix(HipMomZ, landings, 10, stepLen)
 
 # create mean and SD for each variable
 #forces
@@ -261,11 +286,27 @@ sdAnkleInv = np.std(AnkleInversionOut, axis = 0)
 avgAnkleAbd = np.mean(AnkleAbdOut, axis = 0)
 sdAnkleAbd = np.std(AnkleAbdOut, axis = 0)
 
+#AnkleMoments
+avgAnkMomX = np.mean(AnkleMomXOut, axis = 0)
+sdAnkleMomX = np.std(AnkleMomXOut, axis = 0)
+avgAnkleMomY = np.mean(AnkleMomYOut, axis = 0)
+sdAnkleMomY = np.std(AnkleMomYOut, axis = 0)
+avgAnkleMomZ = np.mean(AnkleMomZOut, axis = 0)
+sdAnkleMomZ = np.std(AnkleMomZOut, axis = 0)
+
 #Knee Angles
 avgKneeFlex = np.mean(KneeFlexionOut, axis = 0)
 sdKneeFlex = np.std(KneeFlexionOut, axis = 0)
 avgKneeInt = np.mean(KneeRotationnOut, axis = 0)
 sdKneeInt = np.std(KneeRotationnOut, axis = 0)
+
+#Knee moments
+avgKneeMomX = np.mean(KneeMomXOut, axis = 0)
+sdKneeMomX = np.std(KneeMomXOut, axis = 0)
+avgKneeMomY = np.mean(KneeMomYOut, axis = 0)
+sdKneeMomY = np.std(KneeMomYOut, axis = 0)
+avgKneeMomZ = np.mean(KneeMomZOut, axis = 0)
+sdKneeMomZ = np.std(KneeMomZOut, axis = 0)
 
 # Hip Angles
 avgHipFlex = np.mean(HipFlexionOut, axis = 0)
@@ -275,17 +316,28 @@ sdHipInv = np.std(HipIntOut, axis = 0)
 avgHipAbd = np.mean(HipAbdOut, axis = 0)
 sdHipAbd = np.std(HipAbdOut, axis = 0)
 
+#Hip moments
+avgHipMomX = np.mean(HipMomXOut, axis = 0)
+sdHipMomX = np.std(HipMomXOut, axis = 0)
+avgHipMomY = np.mean(HipMomYOut, axis = 0)
+sdHipMomY = np.std(HipMomYOut, axis = 0)
+avgHipMomZ = np.mean(HipMomZOut, axis = 0)
+sdHipMomZ = np.std(HipMomZOut, axis = 0)
+
 # make shaded error bar figures from std and mean defined above 
 makeNewFig(avgF, sdF, avgFX, sdFX, avgFY, sdFY, 'Z Force','X Force','Y Force')
 
 makeNewFig(avgAP, sdAP, avgKP, sdKP, avgHP, sdHP,'Ankle Power','Knee Power','Hip Power')
 
 makeNewFig(avgAnkleFlex, sdAnkleFlex, avgAnkleInv,  sdAnkleInv, avgAnkleAbd, sdAnkleAbd, 'Anlke Flexion', 'Ankle Inversion','AnkleAbduction')
+makeNewFig(avgAnkMomX, sdAnkleMomX, avgAnkleMomY,  sdAnkleMomY, avgAnkleMomZ, sdAnkleMomZ, 'Anlke X Moment', 'Ankle Y Moment','Ankle Z Moment')
 
 makeNewFig(avgKneeFlex, sdKneeFlex, avgKneeInt,  sdKneeInt, avgAnkleAbd, sdAnkleAbd, 'Knee Flexion', 'Knee Rotation','AnkleAbduction')
+makeNewFig(avgKneeMomX, sdKneeMomX, avgKneeMomY, sdKneeMomY, avgKneeMomZ, sdKneeMomZ, 'Knee X Moment', 'Knee Y Moment', 'Knee Z Moment')
 
 makeNewFig(avgHipFlex, sdHipFlex, avgHipInv,  sdHipInv, avgHipAbd, sdHipAbd, 'Hip Flexion', 'Hip Rotation','Hip Abduction')
+makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ, 'Hip X Moment', 'Hip Y Moment','Hip Z Moment')
 
 
-# 
-makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
+# Full time series data for investigations of raw data if needed 
+#makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
