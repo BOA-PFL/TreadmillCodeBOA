@@ -10,16 +10,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import scipy.signal as sig
-import seaborn as sns
 
 # Define constants and options
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
+stepLen = 70
+x = np.linspace(0,stepLen,stepLen)
 
 # Read in balance file
-fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Kinetics TM\\'
-entries = os.listdir(fPath)
+#fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Kinetics TM\\'
+#fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\Kinetics\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Sub 01\\'
+fileExt = r".txt"
+entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 
 
 # list of functions 
@@ -93,8 +97,7 @@ def trimForce(inputDF, threshForce):
     return(forceTot)
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):
-    
-        # plot aligned time series data for first-look at the data
+    # plot aligned time series data for first-look at the data
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     
@@ -184,41 +187,49 @@ forceThresh = defThreshold(forceDat)
 
 # define a ton and unpack variables
 trimmedForce = trimForce(forceDat, forceThresh)
-XtotalForce = dat.ForcesX
-YtotalForce = dat.ForcesY
-AnklePower = dat.LAnklePower
-KneePower = dat.LKneePower
-HipPower = dat.LHipPower
+XtotalForce = forceDat.ForcesX
+YtotalForce = forceDat.ForcesY
+AnklePower = forceDat.LAnklePower
+KneePower = forceDat.LKneePower
+HipPower = forceDat.LHipPower
 
-AnkleFlexion = dat.LAnkleFlexion
-AnkleInversion = dat.LAnkleInversion
-AnkleAbd = dat.LAnkleAbduction
+AnkleFlexion = forceDat.LAnkleFlex
+AnkleInversion = forceDat.LAnkleInv
+AnkleAbd = forceDat.LAnkleAbd
+#AnkleFlexion = dat.LAnkleAngleX
+#AnkleInversion = dat.LAnkleAngleY
+#AnkleAbd = dat.LAnkleZAngle
 
-KneeFlex = dat.LKneeFlexion
-KneeRot = dat.LKneeRotation
+KneeFlex = forceDat.LKneeFlex
+KneeRot = forceDat.LKneeRot
+#KneeFlex = dat.LKneeYAngle
+#KneeRot = dat.LKneeXAngle
 
-HipFlex = dat.LHipFlexion
-HipAbd = dat.LHipAbduction
-HipInt = dat.LHipRotation
+HipFlex = forceDat.LHipFlex
+HipAbd = forceDat.LHipAbd
+HipInt = forceDat.LHipRot
+#HipFlex = dat.LHipXAngle
+#HipAbd = dat.LHipYAngle
+#HipInt = dat.LHipZAngle
 
-AnkleMomX = dat.LAnkleMomentx
-AnkleMomY = dat.LAnkleMomenty
-AnkleMomZ = dat.LAnkleMomentz
 
-KneeMomX = dat.LKneeMomentX
-KneeMomY = dat.LKneeMomentY
-KneeMomZ = dat.LKneeMomentZ
+AnkleMomX = forceDat.LAnkleMomentx
+AnkleMomY = forceDat.LAnkleMomenty
+AnkleMomZ = forceDat.LAnkleMomentz
 
-HipMomX = dat.LHipMomentx
-HipMomY = dat.LHipMomenty
-HipMomZ = dat.LHipMomentz
+KneeMomX = forceDat.LKneeMomentX
+KneeMomY = forceDat.LKneeMomentY
+KneeMomZ = forceDat.LKneeMomentZ
+
+HipMomX = forceDat.LHipMomentx
+HipMomY = forceDat.LHipMomenty
+HipMomZ = forceDat.LHipMomentz
 
 #find the landings and offs of the FP as vectors from function above
 landings = findLandings(trimmedForce, forceThresh)
 takeoffs = findTakeoffs(trimmedForce, forceThresh)
 
 # create an x-axis
-stepLen = 250
 x = np.linspace(0,stepLen,stepLen)
 
 # stack data in order to allow ensemble averaging
@@ -269,14 +280,14 @@ sdFY = np.std(YforceOut, axis = 0)
 avgFY = avgFY * -1
 
 #Ankle powers
-avgAP = np.mean(AnklePowerOut, axis = 0)
-sdAP = np.std(AnklePowerOut, axis = 0)
+avgAP = np.nanmean(AnklePowerOut, axis = 0)
+sdAP = np.nanstd(AnklePowerOut, axis = 0)
 #Knee powers
-avgKP = np.mean(KneePowerOut, axis = 0)
-sdKP = np.std(KneePowerOut, axis = 0)
+avgKP = np.nanmean(KneePowerOut, axis = 0)
+sdKP = np.nanstd(KneePowerOut, axis = 0)
 #Hip powers
-avgHP = np.mean(HipPowerOut, axis = 0)
-sdHP = np.std(HipPowerOut, axis = 0)
+avgHP = np.nanmean(HipPowerOut, axis = 0) 
+sdHP = np.nanstd(HipPowerOut, axis = 0)
 
 #AnkleAngles
 avgAnkleFlex = np.mean(AnkleFlexionOut, axis = 0)
@@ -340,4 +351,17 @@ makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ,
 
 
 # Full time series data for investigations of raw data if needed 
-#makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
+makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
+
+makeFig(dat, 'ForcesZ', 'LAnkleMomentx', 'LAnkleMomenty', 'LAnkleMomentz', 'Ankle Moments')
+# makeFig(dat, 'ForcesZ', 'LAnkleAngleX', 'LAnkleAngleY', 'LAnkleZAngle', 'Ankle Angles')
+
+# makeFig(dat, 'ForcesZ', 'LKneeMomentX', 'LKneeMomentY', 'LKneeMomentZ', 'Knee Moments')
+# makeFig(dat, 'ForcesZ', 'LKneeXAngle', 'LKneeYAngle', 'LKneeZAngle', 'Knee Angles')
+
+#makeFig(dat, 'ForcesZ', 'LHipMomentx', 'LHipMomenty', 'LHipMomentz', 'Hip Moments')
+#makeFig(dat, 'ForcesZ', 'LHipXAngle', 'LHipYAngle', 'LHipZAngle', 'Hip Angles')
+
+# # Hip X moment: int/ext rotation, Hip Y: Hip Z
+# Knee X moment: int/ext rotation, Hip Y moment: ab/adduction, Hip Z moment: flex/extension
+# Ankle Y: flex/extension
