@@ -41,18 +41,37 @@ def findTakeoffs(force, fThresh):
             lto.append(step + 1)
     return lto
 
+
 def calcVLR(force, startVal, lengthFwd):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
     # indices (n defined by lengthFwd). 
-    maxF = np.max(force[startVal:startVal+lengthFwd])
-    eightyPctMax = 0.8 * maxF
-    twentyPctMax = 0.2 * maxF
-    # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
-    eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+    tmpDiff = np.diff(force[startVal:startVal+lengthFwd])
+    
+    if next(x for x, val in enumerate( tmpDiff ) 
+                      if val < 0) > lengthFwd:
+        maxFindex = next(x for x, val in enumerate( np.diff(tmpDiff) ) 
+                      if val < 0)
+        maxF = force[startVal + maxFindex]
+        eightyPctMax = 0.8 * maxF
+        twentyPctMax = 0.2 * maxF
+            # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
+        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
                       if val > eightyPctMax) 
-    twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
                       if val > twentyPctMax) 
-    VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
+        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
+    
+    else:
+        maxF = np.max(force[startVal:startVal+lengthFwd])
+        eightyPctMax = 0.8 * maxF
+        twentyPctMax = 0.2 * maxF
+        # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
+        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+                          if val > eightyPctMax) 
+        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+                          if val > twentyPctMax) 
+        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
+        
     return(VLR)
     
 #Find max braking force moving forward
