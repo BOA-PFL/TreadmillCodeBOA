@@ -16,9 +16,11 @@ import seaborn as sns
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
+lookFwd = 600
 
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Forces TM\\'
 entries = os.listdir(fPath)
 
 
@@ -81,7 +83,7 @@ def findNextZero(force, length):
     # Starting at a landing, look forward (after first 15 indices)
     # to the find the next time the signal goes from - to +
     for step in range(length):
-        if force[step] <= 0 and force[step + 1] >= 0 and step > 15:
+        if force[step] <= 0 and force[step + 1] >= 0 and step > 45:
             break
     return step
 
@@ -123,19 +125,19 @@ timeP = []
 NL = []
 PkMed = []
 PkLat = []
-
-# Save Time series data in separate DF #
-vertForce = []
-longConfig = []
-longSub = []
-timeIndex = []
+level = []
 
 ## loop through the selected files
-for file in entries[0:1]:
+for file in entries:
     try:
         
         fName = file #Load one file at a time
         
+        #Parse file name into subject and configuration 
+        subName = fName.split(sep = "_")[0]
+        config = fName.split(sep = "_")[1]
+        config = config.split(sep = " ")[0]
+
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
         dat = dat.fillna(0)
         dat.LForceZ = -1 * dat.LForceZ
@@ -149,11 +151,6 @@ for file in entries[0:1]:
         forceZ = trimForce(forceDat, fThresh)
         MForce = forceDat.LForceX
         brakeFilt = forceDat.LForceY * -1
-        
-        #Parse file name into subject and configuration 
-        subName = fName.split(sep = "_")[0]
-        config = fName.split(sep = "_")[1]
-        config = config.split(sep = ' - ')[0]
                 
         #find the landings and offs of the FP as vectors
         landings = findLandings(forceZ)
@@ -165,15 +162,14 @@ for file in entries[0:1]:
         for countVar, landing in enumerate(landings):
             try:
                # Define where next zero is
-                VLR.append(calcVLR(forceZ, landing, 200))
-                nextLanding = findNextZero( np.array(brakeFilt[landing:landing+1000]),1000 )
+                VLR.append(calcVLR(forceZ, landing, lookFwd))
+                nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
                 NL.append(nextLanding)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
                 brakeImpulse.append(sum(brakeFilt[landing:takeoffs[countVar]]))
                 sName.append(subName)
                 tmpConfig.append(config)
-                #timeP.append(timePoint)
-                peakBrakeF.append(calcPeakBrake(brakeFilt,landing, 600))
+                peakBrakeF.append(calcPeakBrake(brakeFilt,landing, lookFwd))
                 PkMed.append(np.max(MForce[landing:takeoffs[countVar]]))
                 PkLat.append(np.min(MForce[landing:takeoffs[countVar]]))
                 
@@ -186,7 +182,7 @@ for file in entries[0:1]:
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
 
-#outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021/WalkForceComb.csv",mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\WalkForceComb.csv")#,mode='a',header=False)
 
 #df2 = pd.DataFrame(pd.concat(vertForce), np.concatenate(longConfig))    
 
