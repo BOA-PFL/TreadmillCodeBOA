@@ -12,14 +12,16 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
+fileToLoad = 12
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
-stepLen = 200
+stepLen = 50
 x = np.linspace(0,stepLen,stepLen)
 
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\Kinetics\\'
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Sub 01\\'
 fileExt = r".txt"
@@ -174,7 +176,7 @@ def makeNewFig(avgVal1, sdVal1, avgVal2, sdVal2, avgVal3, sdVal3, Ylabel1, Ylabe
         plt.tight_layout()
 
 ### load file in
-fName = entries[0] #Load one file at a time
+fName = entries[fileToLoad] #Load one file at a time
 
 dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
 
@@ -183,10 +185,11 @@ dat.ForcesZ = dat.ForcesZ * -1
 #### Trim data to begin and end in a flight phase
 print('Select start and end of analysis trial')
 forceDat = delimitTrial(dat)
-forceThresh = defThreshold(forceDat)
+#forceThresh = defThreshold(forceDat)
+# when COPx is more negative, that is left foot strike
 
 # define a ton and unpack variables
-trimmedForce = trimForce(forceDat, forceThresh)
+trimmedForce = trimForce(forceDat, fThresh)
 XtotalForce = forceDat.ForcesX
 YtotalForce = forceDat.ForcesY
 AnklePower = forceDat.LAnklePower
@@ -207,7 +210,9 @@ KneeRot = forceDat.LKneeRot
 
 HipFlex = forceDat.LHipFlex
 HipAbd = forceDat.LHipAbd
-HipInt = forceDat.LHipRot
+HipInt = forceDat.LHipInt
+#HipInt = forceDat.LHipRot
+
 #HipFlex = dat.LHipXAngle
 #HipAbd = dat.LHipYAngle
 #HipInt = dat.LHipZAngle
@@ -226,8 +231,16 @@ HipMomY = forceDat.LHipMomenty
 HipMomZ = forceDat.LHipMomentz
 
 #find the landings and offs of the FP as vectors from function above
-landings = findLandings(trimmedForce, forceThresh)
-takeoffs = findTakeoffs(trimmedForce, forceThresh)
+landings = findLandings(trimmedForce, fThresh)
+takeoffs = findTakeoffs(trimmedForce, fThresh)
+# determine if first step is left or right then delete every other
+# landing and takeoff. MORE NEGATIVE IS LEFT
+if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
+    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+    trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+else:
+    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+    trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
 
 # create an x-axis
 x = np.linspace(0,stepLen,stepLen)
@@ -346,12 +359,12 @@ makeNewFig(avgAnkMomX, sdAnkleMomX, avgAnkleMomY,  sdAnkleMomY, avgAnkleMomZ, sd
 makeNewFig(avgKneeFlex, sdKneeFlex, avgKneeInt,  sdKneeInt, avgAnkleAbd, sdAnkleAbd, 'Knee Flexion', 'Knee Rotation','AnkleAbduction')
 makeNewFig(avgKneeMomX, sdKneeMomX, avgKneeMomY, sdKneeMomY, avgKneeMomZ, sdKneeMomZ, 'Knee X Moment', 'Knee Y Moment', 'Knee Z Moment')
 
-makeNewFig(avgHipFlex, sdHipFlex, avgHipInv,  sdHipInv, avgHipAbd, sdHipAbd, 'Hip Flexion', 'Hip Rotation','Hip Abduction')
-makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ, 'Hip X Moment', 'Hip Y Moment','Hip Z Moment')
+#makeNewFig(avgHipFlex, sdHipFlex, avgHipInv,  sdHipInv, avgHipAbd, sdHipAbd, 'Hip Flexion', 'Hip Rotation','Hip Abduction')
+#makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ, 'Hip X Moment', 'Hip Y Moment','Hip Z Moment')
 
 
 # Full time series data for investigations of raw data if needed 
-#makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
+makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
 
 #makeFig(dat, 'ForcesZ', 'LAnkleMomentx', 'LAnkleMomenty', 'LAnkleMomentz', 'Ankle Moments')
 # makeFig(dat, 'ForcesZ', 'LAnkleAngleX', 'LAnkleAngleY', 'LAnkleZAngle', 'Ankle Angles')
@@ -359,7 +372,7 @@ makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ,
 #makeFig(dat, 'ForcesZ', 'LKneeMomentX', 'LKneeMomentY', 'LKneeMomentZ', 'Knee Moments')
 # makeFig(dat, 'ForcesZ', 'LKneeXAngle', 'LKneeYAngle', 'LKneeZAngle', 'Knee Angles')
 
-makeFig(dat, 'ForcesZ', 'LHipMomentx', 'LHipMomenty', 'LHipMomentz', 'Hip Moments')
+#makeFig(dat, 'ForcesZ', 'LHipMomentx', 'LHipMomenty', 'LHipMomentz', 'Hip Moments')
 #makeFig(dat, 'ForcesZ', 'LHipXAngle', 'LHipYAngle', 'LHipZAngle', 'Hip Angles')
 
 # # Hip X moment: int/ext rotation, Hip Y: Hip Z

@@ -93,12 +93,20 @@ YtotalForce = dat.LForceY
 #find the landings and offs of the FP as vectors from function above
 landings = findLandings(trimmedForce, forceThresh)
 takeoffs = findTakeoffs(trimmedForce, forceThresh)
+# determine if first step is left or right then delete every other
+# landing and takeoff. MORE NEGATIVE IS LEFT
+if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
+    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+    trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+else:
+    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+    trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
 
 stepLen = 250
 x = np.linspace(0,stepLen,stepLen)
-stackedF = forceMatrix(trimmedForce, landings, 10, stepLen)
-XforceOut = forceMatrix(XtotalForce, landings, 10, stepLen)
-YforceOut = forceMatrix(YtotalForce, landings, 10, stepLen)
+stackedF = forceMatrix(trimmedForce, trimmedLandings, 10, stepLen)
+XforceOut = forceMatrix(XtotalForce, trimmedLandings, 10, stepLen)
+YforceOut = forceMatrix(YtotalForce, trimmedLandings, 10, stepLen)
 
 # create matrices with average and SD of force trajectories
 x = np.linspace(0,stepLen,stepLen)

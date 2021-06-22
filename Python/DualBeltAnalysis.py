@@ -19,8 +19,9 @@ plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 600
 
 # Read in balance file
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
-fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Forces TM\\'
+#fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
+#fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Forces TM\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces\\'
 entries = os.listdir(fPath)
 
 
@@ -125,8 +126,8 @@ timeP = []
 NL = []
 PkMed = []
 PkLat = []
-level = []
 
+# when COPx is more negative, that is left foot strike
 ## loop through the selected files
 for file in entries:
     try:
@@ -136,14 +137,14 @@ for file in entries:
         #Parse file name into subject and configuration 
         subName = fName.split(sep = "_")[0]
         config = fName.split(sep = "_")[1]
-        config = config.split(sep = " ")[0]
+        #config = config.split(sep = " ")[0]
 
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
         dat = dat.fillna(0)
         dat.LForceZ = -1 * dat.LForceZ
-        dat.LForceZ = filterForce(dat.LForceZ, 1000, 20)
-        dat.LForceY = filterForce(dat.LForceY, 1000, 20)
-        dat.LForceX = filterForce(dat.LForceX, 1000, 20)
+        #dat.LForceZ = filterForce(dat.LForceZ, 1000, 20)
+        #dat.LForceY = filterForce(dat.LForceY, 1000, 20)
+        #dat.LForceX = filterForce(dat.LForceX, 1000, 20)
         
         # Trim the trials to a smaller section and threshold force
         print('Select start and end of analysis trial 1')
@@ -155,23 +156,30 @@ for file in entries:
         #find the landings and offs of the FP as vectors
         landings = findLandings(forceZ)
         takeoffs = findTakeoffs(forceZ)
-                
+        # determine if first step is left or right then delete every other
+        # landing and takeoff. MORE NEGATIVE IS LEFT
+        if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
+            trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+            trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+        else:
+            trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+            trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
         
         #For each landing, calculate rolling averages and time to stabilize
     
-        for countVar, landing in enumerate(landings):
+        for countVar, landing in enumerate(trimmedLandings):
             try:
                # Define where next zero is
                 VLR.append(calcVLR(forceZ, landing, lookFwd))
                 nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
                 NL.append(nextLanding)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
-                brakeImpulse.append(sum(brakeFilt[landing:takeoffs[countVar]]))
+                brakeImpulse.append(np.nansum( (brakeFilt[landing:trimmedTakeoffs[countVar]]) ))
                 sName.append(subName)
                 tmpConfig.append(config)
                 peakBrakeF.append(calcPeakBrake(brakeFilt,landing, lookFwd))
-                PkMed.append(np.max(MForce[landing:takeoffs[countVar]]))
-                PkLat.append(np.min(MForce[landing:takeoffs[countVar]]))
+                PkMed.append(np.max(MForce[landing:trimmedTakeoffs[countVar]]))
+                PkLat.append(np.min(MForce[landing:trimmedTakeoffs[countVar]]))
                 
             except:
                 print(landing)
@@ -182,64 +190,5 @@ for file in entries:
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\WalkForceComb.csv")#,mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces.csv")#,mode='a',header=False)
 
-#df2 = pd.DataFrame(pd.concat(vertForce), np.concatenate(longConfig))    
-
-#longDat = pd.concat(vertForce, ignore_index = True)
-#longDat2['Config'] = pd.DataFrame(np.concatenate(longConfig))
-#longDat['Sub'] = pd.DataFrame(np.concatenate(longSub))
-#longDat['TimePoint'] = pd.DataFrame(np.concatenate(timeIndex))
-if plottingEnabled == 1:
-    outcomes[['peakBrake']] = -1 * outcomes[['peakBrake']]
-    outcomes[['PkLat']] = -1 * outcomes[['PkLat']]
-    cleanedOutcomes = outcomes[outcomes['brakeImpulse'] <= -1000]
-    cleanedOutcomes[['brakeImpulse']] = -1 * cleanedOutcomes[['brakeImpulse']]
-        
-    
-    f, axes = plt.subplots(1,2)
-    sns.boxplot(y='peakBrake', x='Subject', hue="Config",
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[0])
-    
-    sns.boxplot(y='VLR', x='Subject', hue = "Config", 
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[1])
-    
-    f, axes = plt.subplots(1,2)
-    sns.boxplot(y='brakeImpulse', x='Subject', hue = "Config", 
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[0])
-    
-    sns.boxplot(y='NL', x='Subject', hue = "Config", 
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[1])
-    plt.tight_layout()
-    
-    f, axes = plt.subplots(1,2)
-    sns.boxplot(y='PkMed', x='Subject', hue="Config",
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[0])
-    sns.boxplot(y='PkLat', x='Subject', hue="Config",
-                     data=cleanedOutcomes, 
-                     palette="colorblind", ax=axes[1])
-
-#
-#newForce = pd.concat(vertForce)
-#newSub = pd.concat(longSub)
-#newConfig = pd.concat(longConfig)
-#newTry = {'vertForce': newForce,
-#        'Sub': newSub,
-#        'Config': newConfig
-#        }
-#
-#df = pd.DataFrame(newTry, columns = ['Force', 'Sub','Config'])
-#### 
-#fmri = sns.load_dataset("fmri")
-#sns.relplot(
-#    data=fmri, kind="line",
-#    x="timepoint", y="signal", col="region",
-#    hue="event", style="event",
-#)
-
-###
