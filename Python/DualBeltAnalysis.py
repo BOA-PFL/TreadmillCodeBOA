@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import scipy.signal as sig
-import seaborn as sns
+
 
 # Define constants and options
 fThresh = 50; #below this value will be set to 0.
@@ -48,9 +48,9 @@ def calcVLR(force, startVal, lengthFwd):
     # indices (n defined by lengthFwd). 
     tmpDiff = np.diff(force[startVal:startVal+lengthFwd])
     
-    if next(x for x, val in enumerate( tmpDiff ) 
-                      if val < 0) > lengthFwd:
-        maxFindex = next(x for x, val in enumerate( np.diff(tmpDiff) ) 
+    if (next(x for x, val in enumerate( tmpDiff ) 
+                      if val < 0) < lengthFwd):
+        maxFindex = next(x for x, val in enumerate( tmpDiff ) 
                       if val < 0)
         maxF = force[startVal + maxFindex]
         eightyPctMax = 0.8 * maxF
@@ -170,7 +170,8 @@ for file in entries:
         for countVar, landing in enumerate(trimmedLandings):
             try:
                # Define where next zero is
-                VLR.append(calcVLR(forceZ, landing, lookFwd))
+                VLR.append(calcVLR(forceZ, landing, 50))
+                VLRtwo.append( (np.max( np.diff(forceZ[landing+5:landing+50]) )/(1/1000) ) )
                 nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
                 NL.append(nextLanding)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
@@ -188,7 +189,8 @@ for file in entries:
             print(file)
 
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
-                         'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
+                         'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'VILR':list(VLRtwo),'PkMed':list(PkMed),
+                         'PkLat':list(PkLat)})
 
 outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces.csv")#,mode='a',header=False)
 
