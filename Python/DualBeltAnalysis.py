@@ -158,10 +158,10 @@ for file in entries:
         takeoffs = findTakeoffs(forceZ)
         # determine if first step is left or right then delete every other
         # landing and takeoff. MORE NEGATIVE IS LEFT
-        if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
+        if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])): #if landing 0 is left, keep all evens
             trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
             trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
-        else:
+        else: #keep all odds
             trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
             trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
         
