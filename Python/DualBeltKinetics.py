@@ -164,6 +164,9 @@ hipNetWork = []
 pkAnkleInv = []
 pkAnkleAbd = []
 pkAnkleFlex = []
+ankleFlexROM = []
+ankleAbdROM = []
+ankleInvROM = []
 
 pkKneeFlex = []
 pkKneeRot = []
@@ -192,6 +195,9 @@ pkHipMomZ = []
 minHipMomX = []
 minHipMomY = []
 minHipMomZ = []
+
+hipRotROM= []
+hipAbdROM = []
 
 sName = []
 tmpConfig = []
@@ -291,6 +297,9 @@ for fName in entries:
                 
                 pkAnkleInv.append( np.max(AnkleInversion[landing:takeoffs[countVar]]) )
                 pkAnkleFlex.append( np.max(AnkleFlexion[landing:takeoffs[countVar]]) )
+                ankleFlexROM.append( np.max(AnkleFlexion[landing:takeoffs[countVar]]) - np.min(AnkleFlexion[landing:takeoffs[countVar]]) )
+                ankleInvROM.append( np.max(AnkleInversion[landing:takeoffs[countVar]]) - np.min(AnkleInversion[landing:takeoffs[countVar]]) )
+                ankleAbdROM.append( np.max(AnkleAbd[landing:takeoffs[countVar]]) - np.min(AnkleAbd[landing:takeoffs[countVar]]) )           
                 
                 pkKneeFlex.append( np.max(KneeFlex[landing:takeoffs[countVar]]) ) 
                 pkKneeRot.append( np.max(KneeRot[landing:takeoffs[countVar]]) )
@@ -298,6 +307,8 @@ for fName in entries:
                 pkHipFlex.append( np.max(HipFlex[landing:takeoffs[countVar]]) )
                 pkHipRot.append( np.max(HipInt[landing:takeoffs[countVar]]) )
                 pkHipAbd.append( np.max(HipAbd[landing:takeoffs[countVar]]) )
+                hipRotROM.append( np.max(HipInt[landing:takeoffs[countVar]]) - np.min(HipInt[landing:takeoffs[countVar]]))
+                hipAbdROM.append( np.max(HipAbd[landing:takeoffs[countVar]]) - np.min(HipAbd[landing:takeoffs[countVar]]))
                 
                 pkAnkleMomX.append( np.max(AnkleMomX[landing:takeoffs[countVar]]) )
                 pkAnkleMomY.append( np.max(AnkleMomY[landing:takeoffs[countVar]]) )
@@ -312,6 +323,7 @@ for fName in entries:
                 minKneeMomX.append( np.min(KneeMomX[landing:takeoffs[countVar]]) )
                 minKneeMomY.append( np.min(KneeMomY[landing:takeoffs[countVar]]) )
                 minKneeMomZ.append( np.min(KneeMomZ[landing:takeoffs[countVar]]) )        
+                
                 
                 pkHipMomX.append( np.max(HipMomX[landing:takeoffs[countVar]]) )
                 pkHipMomY.append( np.max(HipMomY[landing:takeoffs[countVar]]) )
@@ -334,10 +346,13 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'AnkleNegWork':list(ankleNegWork), 'AnklePosWork':list(anklePosWork),
                          'PkKneePw':list(pkKneePw), 'KneeNetWork':list(kneeNetWork),'KneeNegWork':list(kneeNegWork),'KneePosWork':list(kneePosWork),
                          'PkHipPw':list(pkHipPw), 'HipNetWork':list(hipNetWork), 'hipNegWork':list(hipNegWork),'hipPosWork':list(hipPosWork),
-                         'pkAnkleMomX':list(pkAnkleMomX),'pkAnkleMomY':list(pkAnkleMomY),
+                         'pkAnkleMomX':list(pkAnkleMomX),'pkAnkleMomY':list(pkAnkleMomY),'HipRotROM':list(hipRotROM),'HipAbdROM':list(hipAbdROM),
                          'pkAnkleMomZ':list(pkAnkleMomZ), 'pkKneeMomX':list(pkKneeMomX), 'pkKneeMomY':list(pkKneeMomY),'pkKneeMomZ':list(pkKneeMomZ),
                          'pkAnkleFlex':list(pkAnkleFlex), 'pkAnkleInv':list(pkAnkleInv), 'pkKneeFlex':list(pkKneeFlex),
-                         'pkKneeRot':list(pkKneeRot), 'pkHipAbd':list(pkHipAbd), 'pkHipFlex':list(pkHipFlex),'pkHipInt':list(pkHipRot) })
+                         'pkKneeRot':list(pkKneeRot), 'pkHipAbd':list(pkHipAbd), 'pkHipFlex':list(pkHipFlex),'pkHipInt':list(pkHipRot),
+                         'AnkleAbdROM':list(ankleAbdROM), 'AnkleInvROM':list(ankleInvROM), 'AnkleFlexROM':list(ankleFlexROM),
+                         'minHipMomZ':list(minHipMomZ), 'minHipMomY':list(minHipMomY), 'minKneeMomZ':list(minKneeMomZ), 'MinKneeMomY':list(minKneeMomY),
+                         'minAnkleMomZ':list(minAnkleMomZ)})
 
 outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv')
 

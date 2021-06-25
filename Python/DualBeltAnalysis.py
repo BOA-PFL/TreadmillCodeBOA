@@ -48,6 +48,9 @@ def findTakeoffs(force):
 def calcVLR(force, startVal, lengthFwd, endLoading):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
     # indices (n defined by lengthFwd). 
+    # endLoading should be set to where an impact peak should have occured if there is one
+    # and can be biased longer so the for loop doesn't error out
+    # lengthFwd is how far forward to look to calculate VLR
     tmpDiff = np.diff(force[startVal:startVal+500])
     
     if next(x for x, val in enumerate( tmpDiff ) 
