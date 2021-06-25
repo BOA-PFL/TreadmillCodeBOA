@@ -148,11 +148,18 @@ VLR = []
 VLRtwo = []
 
 pkAnklePw = []
-ankleWork = []
+ankleNetWork = []
+anklePosWork = []
+ankleNegWork = []
 pkKneePw = []
-kneeWork = []
+kneeNetWork = []
+kneeNegWork = []
+kneePosWork = []
 pkHipPw = []
-hipWork = []
+hipNetWork = []
+hipNegWork = []
+hipPosWork = []
+hipNetWork = []
 
 pkAnkleInv = []
 pkAnkleAbd = []
@@ -265,12 +272,22 @@ for fName in entries:
         
         for countVar, landing in enumerate(landings):
             try:
+                # separate into positive and negatiave work
                 pkAnklePw.append( np.max(AnklePower[landing:takeoffs[countVar]]) )
-                ankleWork.append( np.sum(AnklePower[landing:takeoffs[countVar]]) )
+                ankleNetWork.append( np.sum(AnklePower[landing:takeoffs[countVar]] ))
+                ankleNegWork.append( sum(i for i in AnklePower if i < 0) )
+                anklePosWork.append( sum(i for i in AnklePower if i > 0) )
+                
+                
                 pkKneePw.append( np.max( KneePower[landing:takeoffs[countVar]]) )
-                kneeWork.append( np.sum( KneePower[landing:takeoffs[countVar]]) )
+                kneeNetWork.append( np.sum( KneePower[landing:takeoffs[countVar]]) )
+                kneeNegWork.append(sum(i for i in KneePower if i < 0) )
+                kneePosWork.append( sum(i for i in KneePower if i > 0) )
+                
                 pkHipPw.append( np.max(HipPower[landing:takeoffs[countVar]]) )
-                hipWork.append( np.sum(HipPower[landing:takeoffs[countVar]]) )
+                hipNetWork.append( np.sum(HipPower[landing:takeoffs[countVar]]) )
+                hipNegWork.append( sum(i for i in HipPower if i < 0) )
+                hipPosWork.append( sum(i for i in HipPower if i > 0) )
                 
                 pkAnkleInv.append( np.max(AnkleInversion[landing:takeoffs[countVar]]) )
                 pkAnkleFlex.append( np.max(AnkleFlexion[landing:takeoffs[countVar]]) )
@@ -313,8 +330,11 @@ for fName in entries:
     except:
         print(fName)
 
-outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnklePw':list(pkAnklePw), 'AnkleWork':list(ankleWork), 'PkKneePw':list(pkKneePw), 'KneeWork':list(kneeWork),
-                         'PkHipPw':list(pkHipPw), 'HipWork':list(hipWork), 'pkAnkleMomX':list(pkAnkleMomX),'pkAnkleMomY':list(pkAnkleMomY),
+outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnklePw':list(pkAnklePw), 'AnkleNetWork':list(ankleNetWork),
+                         'AnkleNegWork':list(ankleNegWork), 'AnklePosWork':list(anklePosWork),
+                         'PkKneePw':list(pkKneePw), 'KneeNetWork':list(kneeNetWork),'KneeNegWork':list(kneeNegWork),'KneePosWork':list(kneePosWork),
+                         'PkHipPw':list(pkHipPw), 'HipNetWork':list(hipNetWork), 'hipNegWork':list(hipNegWork),'hipPosWork':list(hipPosWork),
+                         'pkAnkleMomX':list(pkAnkleMomX),'pkAnkleMomY':list(pkAnkleMomY),
                          'pkAnkleMomZ':list(pkAnkleMomZ), 'pkKneeMomX':list(pkKneeMomX), 'pkKneeMomY':list(pkKneeMomY),'pkKneeMomZ':list(pkKneeMomZ),
                          'pkAnkleFlex':list(pkAnkleFlex), 'pkAnkleInv':list(pkAnkleInv), 'pkKneeFlex':list(pkKneeFlex),
                          'pkKneeRot':list(pkKneeRot), 'pkHipAbd':list(pkHipAbd), 'pkHipFlex':list(pkHipFlex),'pkHipInt':list(pkHipRot) })

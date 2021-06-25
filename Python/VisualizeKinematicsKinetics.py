@@ -12,11 +12,12 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 12
+fileToLoad = 3
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 stepLen = 50
+manualTrim = 0
 x = np.linspace(0,stepLen,stepLen)
 
 # Read in balance file
@@ -175,6 +176,19 @@ def makeNewFig(avgVal1, sdVal1, avgVal2, sdVal2, avgVal3, sdVal3, Ylabel1, Ylabe
 
         plt.tight_layout()
 
+def trimLandings(landingVec, takeoffVec):
+    if landingVec[len(landingVec)-1] > takeoffVec[len(landingVec)-1]:
+        landingVec.pop(0)
+        return(landingVec)
+    else:
+        return(landingVec)
+
+def trimTakeoffs(landingVec, takeoffVec):
+    if landingVec[0] > takeoffVec[0]:
+        takeoffVec.pop(0)
+        return(takeoffVec)
+    else:
+        return(takeoffVec)
 ### load file in
 fName = entries[fileToLoad] #Load one file at a time
 
@@ -183,8 +197,13 @@ dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
 dat.ForcesZ = dat.ForcesZ * -1
 
 #### Trim data to begin and end in a flight phase
-print('Select start and end of analysis trial')
-forceDat = delimitTrial(dat)
+        #### Trim data to begin and end in a flight phase
+                # Trim the trials to a smaller section and threshold force
+if manualTrim == 1:
+    print('Select start and end of analysis trial 1')
+    forceDat = delimitTrial(dat)
+else: 
+    forceDat = dat
 #forceThresh = defThreshold(forceDat)
 # when COPx is more negative, that is left foot strike
 
@@ -233,6 +252,8 @@ HipMomZ = forceDat.LHipMomentz
 #find the landings and offs of the FP as vectors from function above
 landings = findLandings(trimmedForce, fThresh)
 takeoffs = findTakeoffs(trimmedForce, fThresh)
+#landings = trimLandings(landings, takeoffs)
+takeoffs = trimTakeoffs(landings, takeoffs)
 # determine if first step is left or right then delete every other
 # landing and takeoff. MORE NEGATIVE IS LEFT
 if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
