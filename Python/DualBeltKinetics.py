@@ -12,14 +12,17 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
+manualTrim = 0
+run = 0
 fThresh = 80
 writeData = 0; #will write to spreadsheet if 1 entered
-plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 stepLen = 200
 x = np.linspace(0,stepLen,stepLen)
 
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
+
 fileExt = r".txt"
 entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 
@@ -42,14 +45,14 @@ def findTakeoffs(force, fThresh):
     return lto
 
 
-def calcVLR(force, startVal, lengthFwd):
+def calcVLR(force, startVal, lengthFwd, endLoading):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
     # indices (n defined by lengthFwd). 
-    tmpDiff = np.diff(force[startVal:startVal+lengthFwd])
+    tmpDiff = np.diff(force[startVal:startVal+500])
     
     if next(x for x, val in enumerate( tmpDiff ) 
-                      if val < 0) > lengthFwd:
-        maxFindex = next(x for x, val in enumerate( np.diff(tmpDiff) ) 
+                      if val < 0) < endLoading:
+        maxFindex = next(x for x, val in enumerate( tmpDiff ) 
                       if val < 0)
         maxF = force[startVal + maxFindex]
         eightyPctMax = 0.8 * maxF
@@ -123,63 +126,78 @@ def defThreshold(inputDF):
         fThresh = pts[0][1]
         return(fThresh)
 
+def trimLandings(landingVec, takeoffVec):
+    if landingVec[len(landingVec)-1] > takeoffVec[len(landingVec)-1]:
+        landingVec.pop(0)
+        return(landingVec)
+    else:
+        return(landingVec)
+
+def trimTakeoffs(landingVec, takeoffVec):
+    if landingVec[0] > takeoffVec[0]:
+        takeoffVec.pop(0)
+        return(takeoffVec)
+    else:
+        return(takeoffVec)
+
 ## Variable extraction
+loadingRate = []
+peakBrakeF = []
+brakeImpulse = []
+VLR = []
+VLRtwo = []
+
+pkAnklePw = []
+ankleWork = []
+pkKneePw = []
+kneeWork = []
+pkHipPw = []
+hipWork = []
+
+pkAnkleInv = []
+pkAnkleAbd = []
+pkAnkleFlex = []
+
+pkKneeFlex = []
+pkKneeRot = []
+
+pkHipFlex = []
+pkHipAbd = []
+pkHipRot = []
+
+pkAnkleMomX = []
+pkAnkleMomY = []
+pkAnkleMomZ = []
+minAnkleMomX = []
+minAnkleMomY = []
+minAnkleMomZ = []
+
+pkKneeMomX = []
+pkKneeMomY = []
+pkKneeMomZ = []
+minKneeMomX = []
+minKneeMomY = []
+minKneeMomZ = []
+
+pkHipMomX = []
+pkHipMomY = []
+pkHipMomZ = []
+minHipMomX = []
+minHipMomY = []
+minHipMomZ = []
+
+sName = []
+tmpConfig = []
+timeP = []
+NL = []
+PkMed = []
+PkLat = []
 
 # start for loop
 for fName in entries:
     try:
         #Preallocation
-        loadingRate = []
-        peakBrakeF = []
-        brakeImpulse = []
-        VLR = []
-        VLRtwo = []
-        
-        pkAnklePw = []
-        ankleWork = []
-        pkKneePw = []
-        kneeWork = []
-        pkHipPw = []
-        hipWork = []
-        
-        pkAnkleInv = []
-        pkAnkleAbd = []
-        pkAnkleFlex = []
-        
-        pkKneeFlex = []
-        pkKneeRot = []
-        
-        pkHipFlex = []
-        pkHipAbd = []
-        pkHipRot = []
-        
-        pkAnkleMomX = []
-        pkAnkleMomY = []
-        pkAnkleMomZ = []
-        minAnkleMomX = []
-        minAnkleMomY = []
-        minAnkleMomZ = []
-        
-        pkKneeMomX = []
-        pkKneeMomY = []
-        pkKneeMomZ = []
-        minKneeMomX = []
-        minKneeMomY = []
-        minKneeMomZ = []
-        
-        pkHipMomX = []
-        pkHipMomY = []
-        pkHipMomZ = []
-        minHipMomX = []
-        minHipMomY = []
-        minHipMomZ = []
-        
-        sName = []
-        tmpConfig = []
-        timeP = []
-        NL = []
-        PkMed = []
-        PkLat = []
+
         ### load file in
         #fName = entries[0] #Load one file at a time
         
@@ -188,8 +206,13 @@ for fName in entries:
         dat.ForcesZ = dat.ForcesZ * -1
         
         #### Trim data to begin and end in a flight phase
-        print('Select start and end of analysis trial')
-        forceDat = delimitTrial(dat)
+                # Trim the trials to a smaller section and threshold force
+        if manualTrim == 1:
+            print('Select start and end of analysis trial 1')
+            forceDat = delimitTrial(dat)
+        else: 
+            forceDat = dat
+
         
         forceZ = trimForce(forceDat, fThresh)
         MForce = forceDat.ForcesX
@@ -217,7 +240,7 @@ for fName in entries:
         
         HipFlex = forceDat.LHipFlex
         HipAbd = forceDat.LHipAbd
-        HipInt = forceDat.LHipRot
+        HipInt = forceDat.LHipInt
         
         AnkleMomX = forceDat.LAnkleMomentx
         AnkleMomY = forceDat.LAnkleMomenty
@@ -235,24 +258,13 @@ for fName in entries:
         landings = findLandings(trimmedForce, fThresh)
         takeoffs = findTakeoffs(trimmedForce, fThresh)
         ##
+        #landings = trimLandings(landings, takeoffs)
+        takeoffs = trimTakeoffs(landings, takeoffs)
         
         #For each landing, calculate rolling averages and time to stabilize
         
         for countVar, landing in enumerate(landings):
             try:
-               # Define where next zero is
-                VLR.append(calcVLR(trimmedForce, landing, 200))
-                nextLanding = findNextZero( np.array(brakeFilt[landing:landing+1000]),1000 )
-                NL.append(nextLanding)
-                #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
-                brakeImpulse.append(sum(brakeFilt[landing:takeoffs[countVar]]))
-                sName.append(subName)
-                tmpConfig.append(config)
-                #timeP.append(timePoint)
-                peakBrakeF.append(calcPeakBrake(brakeFilt,landing, 600))
-                PkMed.append(np.max(MForce[landing:takeoffs[countVar]]))
-                PkLat.append(np.min(MForce[landing:takeoffs[countVar]]))
-                
                 pkAnklePw.append( np.max(AnklePower[landing:takeoffs[countVar]]) )
                 ankleWork.append( np.sum(AnklePower[landing:takeoffs[countVar]]) )
                 pkKneePw.append( np.max( KneePower[landing:takeoffs[countVar]]) )
@@ -291,22 +303,23 @@ for fName in entries:
                 minHipMomY.append( np.min(HipMomY[landing:takeoffs[countVar]]) )
                 minHipMomZ.append( np.min(HipMomZ[landing:takeoffs[countVar]]) )      
                 
+                sName.append(subName)
+                tmpConfig.append(config)
+                
             except:
                 print(landing)
                 
         
-        outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
-                                 'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat),
-                                 'PkAnklePw':list(pkAnklePw), 'AnkleWork':list(ankleWork), 'PkKneePw':list(pkKneePw), 'KneeWork':list(kneeWork),
-                                 'PkHipPw':list(pkHipPw), 'HipWork':list(hipWork), 'pkAnkleMomX':list(pkAnkleMomX),'pkAnkleMomY':list(pkAnkleMomY),
-                                 'pkAnkleMomZ':list(pkAnkleMomZ), 'pkKneeMomX':list(pkKneeMomX), 'pkKneeMomY':list(pkKneeMomY),'pkKneeMomZ':list(pkKneeMomZ),
-                                 'pkAnkleFlex':list(pkAnkleFlex), 'pkAnkleInv':list(pkAnkleInv), 'pkKneeFlex':list(pkKneeFlex),
-                                 'pkKneeRot':list(pkKneeRot), 'pkHipAbd':list(pkHipAbd), 'pkHipFlex':list(pkHipFlex),'pkHipInt':list(pkHipRot) })
-        
-        outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Kinematics.csv', mode = 'a', header=False)
-    
     except:
         print(fName)
+
+outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnklePw':list(pkAnklePw), 'AnkleWork':list(ankleWork), 'PkKneePw':list(pkKneePw), 'KneeWork':list(kneeWork),
+                         'PkHipPw':list(pkHipPw), 'HipWork':list(hipWork), 'pkAnkleMomX':list(pkAnkleMomX),'pkAnkleMomY':list(pkAnkleMomY),
+                         'pkAnkleMomZ':list(pkAnkleMomZ), 'pkKneeMomX':list(pkKneeMomX), 'pkKneeMomY':list(pkKneeMomY),'pkKneeMomZ':list(pkKneeMomZ),
+                         'pkAnkleFlex':list(pkAnkleFlex), 'pkAnkleInv':list(pkAnkleInv), 'pkKneeFlex':list(pkKneeFlex),
+                         'pkKneeRot':list(pkKneeRot), 'pkHipAbd':list(pkHipAbd), 'pkHipFlex':list(pkHipFlex),'pkHipInt':list(pkHipRot) })
+
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv')
 
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):

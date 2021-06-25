@@ -14,7 +14,7 @@ import scipy.signal as sig
 
 # Define constants and options
 run = 1 # Set this to 1 where participant is running on one belt so only the left are detected. 0 for dual belt
-manualTrim = 0  #set this to 1 if you want to manually trim trials, 0 if you want it auto trimmed (start and end of trial)
+manualTrim = 0  #set this to 1 if you want to manually trim trials with ginput, 0 if you want it auto trimmed (start and end of trial)
 fThresh = 50 #below this value will be set to 0.
 writeData = 0 #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
@@ -48,7 +48,7 @@ def findTakeoffs(force):
 def calcVLR(force, startVal, lengthFwd, endLoading):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
     # indices (n defined by lengthFwd). 
-    tmpDiff = np.diff(force[startVal:startVal+lengthFwd])
+    tmpDiff = np.diff(force[startVal:startVal+500])
     
     if next(x for x, val in enumerate( tmpDiff ) 
                       if val < 0) < endLoading:
@@ -122,15 +122,13 @@ def trimLandings(landingVec, takeoffVec):
         return(landingVec)
     else:
         return(landingVec)
-
-testLand = [0,1,2]
-testTake = [2,3,4]
-testLand2 = [3,4,5]
-testLand3 = [3,3,4]
-if trimLandings(testLand, testTake) == [0,1,2]:
-    print('Test Passed')
-if trimLandings(testLand2, testTake) == [4,5]:
-    print('Test 2 passed')
+    
+def trimTakeoffs(landingVec, takeoffVec):
+    if landingVec[0] > takeoffVec[0]:
+        takeoffVec.pop(0)
+        return(takeoffVec)
+    else:
+        return(takeoffVec)
 
 #Preallocation
 loadingRate = []
@@ -180,7 +178,8 @@ for file in entries:
         landings = findLandings(forceZ)
         takeoffs = findTakeoffs(forceZ)
         
-        landings = trimLandings(landings, takeoffs)
+        #landings = trimLandings(landings, takeoffs)
+        takeoffs = trimTakeoffs(landings, takeoffs)
         # determine if first step is left or right then delete every other
         # landing and takeoff. MORE NEGATIVE IS LEFT
         if run == 1:
@@ -233,5 +232,5 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'peakB
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'VILR':list(VLRtwo),'PkMed':list(PkMed),
                          'PkLat':list(PkLat), 'CT':list(CT)})
 
-#outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces2.csv")#,mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces3.csv")#,mode='a',header=False)
 
