@@ -13,8 +13,10 @@ import scipy.signal as sig
 
 
 # Define constants and options
-fThresh = 50; #below this value will be set to 0.
-writeData = 0; #will write to spreadsheet if 1 entered
+run = 1 # Set this to 1 where participant is running on one belt so only the left are detected. 0 for dual belt
+manualTrim = 0  #set this to 1 if you want to manually trim trials, 0 if you want it auto trimmed (start and end of trial)
+fThresh = 50 #below this value will be set to 0.
+writeData = 0 #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 600
 
@@ -43,13 +45,13 @@ def findTakeoffs(force):
     return lto
 
 
-def calcVLR(force, startVal, lengthFwd):
+def calcVLR(force, startVal, lengthFwd, endLoading):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
     # indices (n defined by lengthFwd). 
     tmpDiff = np.diff(force[startVal:startVal+lengthFwd])
     
-    if (next(x for x, val in enumerate( tmpDiff ) 
-                      if val < 0) < lengthFwd):
+    if next(x for x, val in enumerate( tmpDiff ) 
+                      if val < 0) < endLoading:
         maxFindex = next(x for x, val in enumerate( tmpDiff ) 
                       if val < 0)
         maxF = force[startVal + maxFindex]
@@ -114,6 +116,22 @@ def trimForce(inputDF, threshForce):
     forceTot = np.array(forceTot)
     return(forceTot)
 
+def trimLandings(landingVec, takeoffVec):
+    if landingVec[0] > takeoffVec[0]:
+        landingVec.pop(0)
+        return(landingVec)
+    else:
+        return(landingVec)
+
+testLand = [0,1,2]
+testTake = [2,3,4]
+testLand2 = [3,4,5]
+testLand3 = [3,3,4]
+if trimLandings(testLand, testTake) == [0,1,2]:
+    print('Test Passed')
+if trimLandings(testLand2, testTake) == [4,5]:
+    print('Test 2 passed')
+
 #Preallocation
 loadingRate = []
 peakBrakeF = []
@@ -126,6 +144,7 @@ timeP = []
 NL = []
 PkMed = []
 PkLat = []
+CT = []
 
 # when COPx is more negative, that is left foot strike
 ## loop through the selected files
@@ -147,50 +166,72 @@ for file in entries:
         #dat.LForceX = filterForce(dat.LForceX, 1000, 20)
         
         # Trim the trials to a smaller section and threshold force
-        print('Select start and end of analysis trial 1')
-        forceDat = delimitTrial(dat)
+        if manualTrim == 1:
+            print('Select start and end of analysis trial 1')
+            forceDat = delimitTrial(dat)
+        else: 
+            forceDat = dat
+            
         forceZ = trimForce(forceDat, fThresh)
         MForce = forceDat.LForceX
         brakeFilt = forceDat.LForceY * -1
                 
-        #find the landings and offs of the FP as vectors
+        #find the landings and takeoffs of the FP as vectors
         landings = findLandings(forceZ)
         takeoffs = findTakeoffs(forceZ)
+        
+        landings = trimLandings(landings, takeoffs)
         # determine if first step is left or right then delete every other
         # landing and takeoff. MORE NEGATIVE IS LEFT
-        if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])): #if landing 0 is left, keep all evens
-            trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
-            trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
-        else: #keep all odds
-            trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
-            trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+        if run == 1:
+            if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])): #if landing 0 is left, keep all evens
+                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+                trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+            else: #keep all odds
+                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+                trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+        else:
+            trimmedLandings = landings
+            trimmedTakesoffs = takeoffs
         
         #For each landing, calculate rolling averages and time to stabilize
     
         for countVar, landing in enumerate(trimmedLandings):
             try:
                # Define where next zero is
-                VLR.append(calcVLR(forceZ, landing, 50))
+                VLR.append(calcVLR(forceZ, landing, 150,50))
                 VLRtwo.append( (np.max( np.diff(forceZ[landing+5:landing+50]) )/(1/1000) ) )
-                nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
-                NL.append(nextLanding)
+                try:
+                    CT.append(trimmedTakeoffs[countVar] - landing)
+                except:
+                    CT.append(0)
+                try:
+                    nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
+                    brakeImpulse.append(np.nansum( (brakeFilt[landing:landing+nextLanding]) ))
+                except:
+                    brakeImpulse.append(0)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
-                brakeImpulse.append(np.nansum( (brakeFilt[landing:trimmedTakeoffs[countVar]]) ))
                 sName.append(subName)
                 tmpConfig.append(config)
                 peakBrakeF.append(calcPeakBrake(brakeFilt,landing, lookFwd))
-                PkMed.append(np.max(MForce[landing:trimmedTakeoffs[countVar]]))
-                PkLat.append(np.min(MForce[landing:trimmedTakeoffs[countVar]]))
-                
+                try:
+                    PkMed.append(np.max(MForce[landing:trimmedTakeoffs[countVar]]))
+                except:
+                    PkMed.append(0)
+                try:
+                    PkLat.append(np.min(MForce[landing:trimmedTakeoffs[countVar]]))
+                except:
+                    PkLat.append(0)
+                            
             except:
                 print(landing)
         
     except:
             print(file)
 
-outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'NL':list(NL),'peakBrake': list(peakBrakeF),
+outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'VILR':list(VLRtwo),'PkMed':list(PkMed),
-                         'PkLat':list(PkLat)})
+                         'PkLat':list(PkLat), 'CT':list(CT)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces.csv")#,mode='a',header=False)
+#outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces2.csv")#,mode='a',header=False)
 

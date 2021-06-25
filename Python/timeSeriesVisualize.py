@@ -14,7 +14,7 @@ import seaborn as sns
 # Define constants and options
 
 # Read in balance file
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces\\'
 entries = os.listdir(fPath)
 
 # list of functions 
@@ -78,7 +78,7 @@ def forceMatrix(inputForce, landings, noSteps, stepLength):
     return preForce
 
 ## Load file in
-fName = entries[3] #Load one file at a time
+fName = entries[18] #Load one file at a time
         
 dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
 dat.LForceZ = dat.LForceZ * -1
@@ -121,7 +121,7 @@ sdFY = np.std(YforceOut, axis = 0)
 avgFY = avgFY * -1
 
 #####
-fig, (ax1, ax2, ax3) = plt.subplots(3)
+fig, (ax1, ax2, ax3) = plt.subplots(1,3)
 ax1.plot(x, avgF, 'k', color='#00966C', label = 'Z Force')
 #ax1.plot(x, avgF3, 'k', color='#000000', label = '{}'.format(config3))
 ax1.set_xlabel('Time')
