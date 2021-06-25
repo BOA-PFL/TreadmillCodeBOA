@@ -15,7 +15,15 @@ import scipy.signal as sig
 
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces\\'
+
 entries = os.listdir(fPath)
+
+# load data in
+fName = entries[1] #Load one file at a time
+fName2 = entries[5]
+config1 = fName.split('_')[1]
+config2 = fName2.split('_')[1]
 
 # list of functions 
 # finding landings on the force plate once the filtered force exceeds the force threshold
@@ -85,11 +93,7 @@ def filterForce(inputForce, sampFrq, cutoffFrq):
         filtForce = sig.filtfilt(b, a, inputForce)
         return(filtForce)
         
-# load data in
-fName = entries[2] #Load one file at a time
-fName2 = entries[3]
-config1 = fName.split('_')[2].split(' - ')[0]
-config2 = fName2.split('_')[2].split(' - ')[0]
+
 
 dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
 dat = dat.fillna(0)

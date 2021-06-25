@@ -36,7 +36,7 @@ def calcMean3min(fullDat, inputMarker):
     startTime = fullDat[fullDat['Marker'] == inputMarker].index.tolist()
     td1 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:03:00')
     td2 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:04:00')
-    tp1 = fullDat[(dat['t'] > str(td1)[5:20]) & (fullDat['t'] < str(td2)[5:20])].reset_index()
+    tp1 = fullDat[(fullDat['t'] > str(td1)[5:20]) & (fullDat['t'] < str(td2)[5:20])].reset_index()
 
     return(np.mean(tp1['EEm']))
 
@@ -97,11 +97,12 @@ for file in entries:
         
         for i in range(12):
             subject.append(file.split(' ')[0])
-        
-        outcomes = pd.DataFrame({'Subject':list(subject),'Config':list(config), 'EE':list(met)})
-        
-        outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Met.csv', mode = 'a', header = False)
+
     except:
         print(file)
 
+        
+outcomes = pd.DataFrame({'Subject':list(subject),'Config':list(config), 'EE':list(met)})
+
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Met.csv', mode = 'a', header = False)
 

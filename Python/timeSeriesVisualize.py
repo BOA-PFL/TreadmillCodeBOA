@@ -8,8 +8,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import scipy.signal as sig
-import seaborn as sns
 
 # Define constants and options
 
