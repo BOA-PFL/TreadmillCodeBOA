@@ -17,6 +17,8 @@ fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 1000
+pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
+manualTrim = 0 #set to 1 to use ginput
 
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
@@ -113,6 +115,13 @@ def trimForce(inputDF, threshForce):
     forceTot = np.array(forceTot)
     return(forceTot)
 
+def trimTakeoffs(landingVec, takeoffVec):
+    if landingVec[0] > takeoffVec[0]:
+        takeoffVec.pop(0)
+        return(takeoffVec)
+    else:
+        return(takeoffVec)
+
 #Preallocation
 loadingRate = []
 peakBrakeF = []
@@ -147,10 +156,16 @@ for file in entries:
         dat.LForceX = filterForce(dat.LForceX, 1000, 20)
         
         # Trim the trials to a smaller section and threshold force
-        print('Select start and end of analysis trial 1')
-        forceDat = delimitTrial(dat)
+        if manualTrim == 1:
+            print('Select start and end of analysis trial 1')
+            forceDat = delimitTrial(dat)
+        else: 
+            forceDat = dat
+            
         forceZ = trimForce(forceDat, fThresh)
         MForce = forceDat.LForceX
+        brakeFilt = forceDat.LForceY * -1
+
         
         # if uphill, make braking force negative, if DH, keep sign
         if upDown == 'UH':
@@ -161,7 +176,7 @@ for file in entries:
         #find the landings and offs of the FP as vectors
         landings = findLandings(forceZ)
         takeoffs = findTakeoffs(forceZ)
-                
+        takeoffs = trimTakeoffs(landings, takeoffs)
         
         #For each landing, calculate rolling averages and time to stabilize
     

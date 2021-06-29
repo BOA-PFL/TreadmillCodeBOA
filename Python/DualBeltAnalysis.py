@@ -19,6 +19,7 @@ fThresh = 50 #below this value will be set to 0.
 writeData = 0 #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 600
+pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 # Read in balance file
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
