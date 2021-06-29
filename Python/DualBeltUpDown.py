@@ -164,8 +164,6 @@ for file in entries:
             
         forceZ = trimForce(forceDat, fThresh)
         MForce = forceDat.LForceX
-        brakeFilt = forceDat.LForceY * -1
-
         
         # if uphill, make braking force negative, if DH, keep sign
         if upDown == 'UH':
