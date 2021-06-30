@@ -23,6 +23,7 @@ manualTrim = 0 #set to 1 to use ginput
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
 fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Forces TM\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Forces\\'
 entries = os.listdir(fPath)
 
 
@@ -123,6 +124,7 @@ def trimTakeoffs(landingVec, takeoffVec):
         return(takeoffVec)
 
 #Preallocation
+CT = []
 loadingRate = []
 peakBrakeF = []
 brakeImpulse = []
@@ -181,17 +183,30 @@ for file in entries:
         for countVar, landing in enumerate(landings):
             try:
                # Define where next zero is
-                VLR.append(calcVLR(forceZ, landing, 500,lookFwd))
-                nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
-                NL.append(nextLanding)
+                VLR.append(calcVLR(forceZ, landing, 1000,600))
+                VLRtwo.append( (np.max( np.diff(forceZ[landing+5:landing+50]) )/(1/1000) ) )
+                try:
+                    CT.append(takeoffs[countVar] - landing)
+                except:
+                    CT.append(0)
+                try:
+                    nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
+                    brakeImpulse.append(np.nansum( (brakeFilt[landing:landing+nextLanding]) ))
+                except:
+                    brakeImpulse.append(0)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
-                brakeImpulse.append(sum(brakeFilt[landing:takeoffs[countVar]]))
                 sName.append(subName)
                 tmpConfig.append(config)
-                level.append(upDown)
                 peakBrakeF.append(calcPeakBrake(brakeFilt,landing, lookFwd))
-                PkMed.append(np.max(MForce[landing:takeoffs[countVar]]))
-                PkLat.append(np.min(MForce[landing:takeoffs[countVar]]))
+                level.append(upDown)
+                try:
+                    PkMed.append(np.max(MForce[landing:takeoffs[countVar]]))
+                except:
+                    PkMed.append(0)
+                try:
+                    PkLat.append(np.min(MForce[landing:takeoffs[countVar]]))
+                except:
+                    PkLat.append(0)
                 
             except:
                 print(landing)
@@ -199,7 +214,7 @@ for file in entries:
     except:
             print(file)
 
-outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'Level':list(level),'NL':list(NL),'peakBrake': list(peakBrakeF),
+outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'Level':list(level),'CT':list(CT),'peakBrake': list(peakBrakeF),
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'PkMed':list(PkMed), 'PkLat':list(PkLat)})
 
 outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\WalkForceComb.csv")#,mode='a',header=False)

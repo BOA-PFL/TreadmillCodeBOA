@@ -208,7 +208,7 @@ PkMed = []
 PkLat = []
 
 # start for loop
-for fName in entries[28:33]:
+for fName in entries:
     try:
         #Preallocation
 
@@ -274,9 +274,7 @@ for fName in entries[28:33]:
         ##
         #landings = trimLandings(landings, takeoffs)
         takeoffs = trimTakeoffs(landings, takeoffs)
-        
-        #For each landing, calculate rolling averages and time to stabilize
-        
+                
         for countVar, landing in enumerate(landings):
             try:
                 # separate into positive and negatiave work
@@ -324,8 +322,7 @@ for fName in entries[28:33]:
                 minKneeMomX.append( np.min(KneeMomX[landing:takeoffs[countVar]]) )
                 minKneeMomY.append( np.min(KneeMomY[landing:takeoffs[countVar]]) )
                 minKneeMomZ.append( np.min(KneeMomZ[landing:takeoffs[countVar]]) )        
-                
-                
+                  
                 pkHipMomX.append( np.max(HipMomX[landing:takeoffs[countVar]]) )
                 pkHipMomY.append( np.max(HipMomY[landing:takeoffs[countVar]]) )
                 pkHipMomZ.append( np.max(HipMomZ[landing:takeoffs[countVar]]) )
@@ -355,7 +352,7 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'minHipMomZ':list(minHipMomZ), 'minHipMomY':list(minHipMomY), 'minKneeMomZ':list(minKneeMomZ), 'MinKneeMomY':list(minKneeMomY),
                          'minAnkleMomZ':list(minAnkleMomZ)})
 
-outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv', mode ='a',header = False)
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv')#, mode ='a',header = False)
 
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):

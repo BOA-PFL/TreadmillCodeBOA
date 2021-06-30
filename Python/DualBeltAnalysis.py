@@ -150,7 +150,7 @@ CT = []
 
 # when COPx is more negative, that is left foot strike
 ## loop through the selected files
-for file in entries:
+for file in entries[41:47]:
     try:
         
         fName = file #Load one file at a time
