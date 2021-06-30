@@ -236,5 +236,5 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'peakB
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'VILR':list(VLRtwo),'PkMed':list(PkMed),
                          'PkLat':list(PkLat), 'CT':list(CT)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces3.csv")#,mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces3.csv",mode='a',header=False)
 

@@ -208,7 +208,7 @@ PkMed = []
 PkLat = []
 
 # start for loop
-for fName in entries:
+for fName in entries[28:33]:
     try:
         #Preallocation
 
@@ -282,19 +282,19 @@ for fName in entries:
                 # separate into positive and negatiave work
                 pkAnklePw.append( np.max(AnklePower[landing:takeoffs[countVar]]) )
                 ankleNetWork.append( np.sum(AnklePower[landing:takeoffs[countVar]] ))
-                ankleNegWork.append( sum(i for i in AnklePower if i < 0) )
-                anklePosWork.append( sum(i for i in AnklePower if i > 0) )
+                ankleNegWork.append( sum(i for i in AnklePower[landing:takeoffs[countVar]] if i < 0) )
+                anklePosWork.append( sum(i for i in AnklePower[landing:takeoffs[countVar]] if i > 0) )
                 
                 
                 pkKneePw.append( np.max( KneePower[landing:takeoffs[countVar]]) )
                 kneeNetWork.append( np.sum( KneePower[landing:takeoffs[countVar]]) )
-                kneeNegWork.append(sum(i for i in KneePower if i < 0) )
-                kneePosWork.append( sum(i for i in KneePower if i > 0) )
+                kneeNegWork.append(sum(i for i in KneePower[landing:takeoffs[countVar]] if i < 0) )
+                kneePosWork.append( sum(i for i in KneePower[landing:takeoffs[countVar]] if i > 0) )
                 
                 pkHipPw.append( np.max(HipPower[landing:takeoffs[countVar]]) )
                 hipNetWork.append( np.sum(HipPower[landing:takeoffs[countVar]]) )
-                hipNegWork.append( sum(i for i in HipPower if i < 0) )
-                hipPosWork.append( sum(i for i in HipPower if i > 0) )
+                hipNegWork.append( sum(i for i in HipPower[landing:takeoffs[countVar]] if i < 0) )
+                hipPosWork.append( sum(i for i in HipPower[landing:takeoffs[countVar]] if i > 0) )
                 
                 pkAnkleInv.append( np.max(AnkleInversion[landing:takeoffs[countVar]]) )
                 pkAnkleFlex.append( np.max(AnkleFlexion[landing:takeoffs[countVar]]) )
@@ -355,7 +355,7 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'minHipMomZ':list(minHipMomZ), 'minHipMomY':list(minHipMomY), 'minKneeMomZ':list(minKneeMomZ), 'MinKneeMomY':list(minKneeMomY),
                          'minAnkleMomZ':list(minAnkleMomZ)})
 
-outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv')
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv', mode ='a',header = False)
 
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):

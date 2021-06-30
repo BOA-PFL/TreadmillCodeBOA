@@ -82,8 +82,8 @@ for file in entries:
         
         met.append(calcMean3min(dat, 'SL_1_Start'))
         met.append(calcMean4min(dat, 'SL_1_Start'))
-        met.append(calcMean3MinLate(dat, 'Sl_2_Start'))
-        met.append(calcMean4MinLate(dat, 'Sl_2_Start'))   
+        met.append(calcMean3MinLate(dat, 'SL_2_Start'))
+        met.append(calcMean4MinLate(dat, 'SL_2_Start'))   
         
         met.append(calcMean3min(dat, 'DD_1_Start'))
         met.append(calcMean4min(dat, 'DD_1_Start'))
