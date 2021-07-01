@@ -12,17 +12,18 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 31
+fileToLoad = 1
+runTrial = 0 #set to 1 for running 
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
-stepLen = 50
+stepLen = 250
 manualTrim = 0
 x = np.linspace(0,stepLen,stepLen)
 
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
+#fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\Kinetics\\'
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Sub 01\\'
 fileExt = r".txt"
@@ -229,8 +230,8 @@ KneeRot = forceDat.LKneeRot
 
 HipFlex = forceDat.LHipFlex
 HipAbd = forceDat.LHipAbd
-HipInt = forceDat.LHipInt
-#HipInt = forceDat.LHipRot
+#HipInt = forceDat.LHipInt
+HipInt = forceDat.LHipRot
 
 #HipFlex = dat.LHipXAngle
 #HipAbd = dat.LHipYAngle
@@ -256,12 +257,16 @@ takeoffs = findTakeoffs(trimmedForce, fThresh)
 takeoffs = trimTakeoffs(landings, takeoffs)
 # determine if first step is left or right then delete every other
 # landing and takeoff. MORE NEGATIVE IS LEFT
-if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
-    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
-    trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+if runTrial == 1:
+    if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
+        trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+        trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+    else:
+        trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+        trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
 else:
-    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
-    trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+    trimmedLandings = landings
+    trimemdTakeoffs = takeoffs
 
 # create an x-axis
 x = np.linspace(0,stepLen,stepLen)

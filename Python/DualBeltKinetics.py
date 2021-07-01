@@ -22,7 +22,7 @@ pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lo
 
 # Read in balance file
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
+#fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
 
 fileExt = r".txt"
 entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
@@ -254,7 +254,10 @@ for fName in entries:
         
         HipFlex = forceDat.LHipFlex
         HipAbd = forceDat.LHipAbd
-        HipInt = forceDat.LHipInt
+        try:
+            HipInt = forceDat.LHipInt
+        except:
+            HipInt = forceDat.LHipRot
         
         AnkleMomX = forceDat.LAnkleMomentx
         AnkleMomY = forceDat.LAnkleMomenty
@@ -274,6 +277,18 @@ for fName in entries:
         ##
         #landings = trimLandings(landings, takeoffs)
         takeoffs = trimTakeoffs(landings, takeoffs)
+        
+        if run == 1:
+            if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])): #if landing 0 is left, keep all evens
+                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+                trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+            else: #keep all odds
+                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+                trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+        else:
+            trimmedLandings = landings
+            trimmedTakesoffs = takeoffs
+        
                 
         for countVar, landing in enumerate(landings):
             try:
@@ -352,7 +367,8 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'minHipMomZ':list(minHipMomZ), 'minHipMomY':list(minHipMomY), 'minKneeMomZ':list(minKneeMomZ), 'MinKneeMomY':list(minKneeMomY),
                          'minAnkleMomZ':list(minAnkleMomZ)})
 
-outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv')#, mode ='a',header = False)
+#outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics.csv')#, mode ='a',header = False)
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\KinematicsKinetics.csv')#, mode ='a',header = False)
 
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):
