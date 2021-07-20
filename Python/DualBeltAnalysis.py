@@ -150,7 +150,7 @@ CT = []
 
 # when COPx is more negative, that is left foot strike
 ## loop through the selected files
-for file in entries[41:47]:
+for file in entries:
     try:
         
         fName = file #Load one file at a time
@@ -236,5 +236,5 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'peakB
                          'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'VILR':list(VLRtwo),'PkMed':list(PkMed),
                          'PkLat':list(PkLat), 'CT':list(CT)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces3.csv",mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces4.csv")#,mode='a',header=False)
 

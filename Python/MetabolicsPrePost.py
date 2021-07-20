@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import os
 
-def calcMean3MinLate(fullDat, inputMarker):
+def calcMean3minLate(fullDat, inputMarker):
     ## used after 1 hour of testing has elapsed because the date format
     ## is longer
     startTime = fullDat[fullDat['Marker'] == inputMarker].index.tolist()
@@ -18,7 +18,7 @@ def calcMean3MinLate(fullDat, inputMarker):
     tp1 = fullDat[(fullDat['t'] > str(td1)[5:22]) & (fullDat['t'] < str(td2)[5:22])].reset_index()
     return(np.mean(tp1['EEm']))
     
-def calcMean4MinLate(fullDat, inputMarker):
+def calcMean4minLate(fullDat, inputMarker):
     ## used after 1 hour of testing has elapsed because the date format
     ## is longer
     startTime = fullDat[fullDat['Marker'] == inputMarker].index.tolist()
@@ -74,21 +74,23 @@ for file in entries:
             config.append('SL')
         for i in range(4):
             config.append('DD')
-
+        try:
+            met.append(calcMean3min(dat, 'SD_1_Start'))
+        except:
+            met.append(calcMean3minLate(dat,'SD_1_Start'))
         met.append(calcMean3min(dat, 'SD_1_Start'))
-        met.append(calcMean3min(dat, 'SD_1_Start'))
-        met.append(calcMean3MinLate(dat, 'SD_2_Start'))
-        met.append(calcMean4MinLate(dat, 'SD_2_Start'))
+        met.append(calcMean3minLate(dat, 'SD_2_Start'))
+        met.append(calcMean4minLate(dat, 'SD_2_Start'))
         
-        met.append(calcMean3min(dat, 'SL_1_Start'))
-        met.append(calcMean4min(dat, 'SL_1_Start'))
-        met.append(calcMean3MinLate(dat, 'SL_2_Start'))
-        met.append(calcMean4MinLate(dat, 'SL_2_Start'))   
+        met.append(calcMean3minLate(dat, 'SL_1_Start'))
+        met.append(calcMean4minLate(dat, 'SL_1_Start'))
+        met.append(calcMean3minLate(dat, 'SL_2_Start'))
+        met.append(calcMean4minLate(dat, 'SL_2_Start'))   
         
-        met.append(calcMean3min(dat, 'DD_1_Start'))
-        met.append(calcMean4min(dat, 'DD_1_Start'))
-        met.append(calcMean3MinLate(dat, 'DD_2_Start'))
-        met.append(calcMean4MinLate(dat, 'DD_2_Start'))
+        met.append(calcMean3minLate(dat, 'DD_1_Start'))
+        met.append(calcMean4minLate(dat, 'DD_1_Start'))
+        met.append(calcMean3minLate(dat, 'DD_2_Start'))
+        met.append(calcMean4minLate(dat, 'DD_2_Start'))
         
         for i in range(12):
             subject.append(file.split(' ')[0])

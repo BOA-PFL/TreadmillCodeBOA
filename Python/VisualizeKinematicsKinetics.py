@@ -12,18 +12,18 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 1
-runTrial = 0 #set to 1 for running 
+fileToLoad = 61
+runTrial = 1 #set to 1 for running 
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
-stepLen = 250
+stepLen = 50
 manualTrim = 0
 x = np.linspace(0,stepLen,stepLen)
 
 # Read in balance file
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
-#fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
+#fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
+fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\Kinetics\\'
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Sub 01\\'
 fileExt = r".txt"
@@ -230,8 +230,10 @@ KneeRot = forceDat.LKneeRot
 
 HipFlex = forceDat.LHipFlex
 HipAbd = forceDat.LHipAbd
-#HipInt = forceDat.LHipInt
-HipInt = forceDat.LHipRot
+try:
+    HipInt = forceDat.LHipInt
+except:
+    HipInt = forceDat.LHipRot
 
 #HipFlex = dat.LHipXAngle
 #HipAbd = dat.LHipYAngle
@@ -390,7 +392,7 @@ makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ,
 
 
 # Full time series data for investigations of raw data if needed 
-#makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
+makeFig(dat, 'ForcesZ', 'LAnklePower', 'LKneePower', 'LHipPower', 'Powers')
 
 #makeFig(dat, 'ForcesZ', 'LAnkleMomentx', 'LAnkleMomenty', 'LAnkleMomentz', 'Ankle Moments')
 #makeFig(dat, 'ForcesZ', 'LAnkleAngleX', 'LAnkleAngleY', 'LAnkleZAngle', 'Ankle Angles')

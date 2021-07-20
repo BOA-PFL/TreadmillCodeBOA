@@ -13,9 +13,9 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 24
-fileToLoad2 = 26
-fileToLoad3 = 27
+fileToLoad = 43
+fileToLoad2 = 45
+fileToLoad3 = 47
 runTrial = 1 #set to 1 for running 
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
