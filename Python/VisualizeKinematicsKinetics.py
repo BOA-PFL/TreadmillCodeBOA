@@ -12,7 +12,7 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 61
+fileToLoad = 72
 runTrial = 1 #set to 1 for running 
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered

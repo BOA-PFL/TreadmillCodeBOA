@@ -18,7 +18,8 @@ manualTrim = 0  #set this to 1 if you want to manually trim trials with ginput, 
 fThresh = 50 #below this value will be set to 0.
 writeData = 0 #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
-lookFwd = 600
+lookFwd = 50
+timeToLoad = 75 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 # Read in balance file
@@ -69,13 +70,13 @@ def calcVLR(force, startVal, lengthFwd, endLoading):
         VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
     
     else:
-        maxF = np.max(force[startVal:startVal+lengthFwd])
+        maxF = np.max(force[startVal:startVal+endLoading])
         eightyPctMax = 0.8 * maxF
         twentyPctMax = 0.2 * maxF
         # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
-        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+endLoading]) 
                           if val > eightyPctMax) 
-        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+endLoading]) 
                           if val > twentyPctMax) 
         VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
         
@@ -140,6 +141,7 @@ peakBrakeF = []
 brakeImpulse = []
 VLR = []
 VLRtwo = []
+pkForce = []
 sName = []
 tmpConfig = []
 timeP = []
@@ -147,6 +149,8 @@ NL = []
 PkMed = []
 PkLat = []
 CT = []
+meanForce = []
+propImpulse = []
 
 # when COPx is more negative, that is left foot strike
 ## loop through the selected files
@@ -163,9 +167,6 @@ for file in entries:
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
         dat = dat.fillna(0)
         dat.LForceZ = -1 * dat.LForceZ
-        #dat.LForceZ = filterForce(dat.LForceZ, 1000, 20)
-        #dat.LForceY = filterForce(dat.LForceY, 1000, 20)
-        #dat.LForceX = filterForce(dat.LForceX, 1000, 20)
         
         # Trim the trials to a smaller section and threshold force
         if manualTrim == 1:
@@ -181,8 +182,7 @@ for file in entries:
         #find the landings and takeoffs of the FP as vectors
         landings = findLandings(forceZ)
         takeoffs = findTakeoffs(forceZ)
-        
-        #landings = trimLandings(landings, takeoffs)
+
         takeoffs = trimTakeoffs(landings, takeoffs)
         # determine if first step is left or right then delete every other
         # landing and takeoff. MORE NEGATIVE IS LEFT
@@ -197,26 +197,38 @@ for file in entries:
             trimmedLandings = landings
             trimmedTakesoffs = takeoffs
         
+        ## check to make sure brake force is applied in the correct direction ##
+        if np.mean(brakeFilt[landings[1]:landings[1]+100]) > 0:
+            brakeFilt = -1 * brakeFilt
         #For each landing, calculate rolling averages and time to stabilize
     
         for countVar, landing in enumerate(trimmedLandings):
             try:
                # Define where next zero is
-                VLR.append(calcVLR(forceZ, landing, 150,50))
+                VLR.append(calcVLR(forceZ, landing, 150, timeToLoad))
                 VLRtwo.append( (np.max( np.diff(forceZ[landing+5:landing+50]) )/(1/1000) ) )
                 try:
                     CT.append(trimmedTakeoffs[countVar] - landing)
                 except:
                     CT.append(0)
                 try:
-                    nextLanding = findNextZero( np.array(brakeFilt[landing:landing+lookFwd]),lookFwd )
-                    brakeImpulse.append(np.nansum( (brakeFilt[landing:landing+nextLanding]) ))
+                    brakeImpulse.append( sum(i for i in brakeFilt[landing:landing+200]if i < 0) ) #sum all negative brake force vals
+                    propImpulse.append( sum(i for i in brakeFilt[landing:landing+200]if i > 0) ) #sum all positive values
                 except:
                     brakeImpulse.append(0)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
                 sName.append(subName)
                 tmpConfig.append(config)
+                
                 peakBrakeF.append(calcPeakBrake(brakeFilt,landing, lookFwd))
+                try:
+                    meanForce.append( np.mean(forceZ[landing:trimmedTakeoffs[countVar]]))
+                except:
+                    meanForce.append(0)
+                try:
+                    pkForce.append( np.max(forceZ[landing:landing+200]) )
+                except:
+                    pkForce.append(0)
                 try:
                     PkMed.append(np.max(MForce[landing:trimmedTakeoffs[countVar]]))
                 except:
@@ -232,9 +244,10 @@ for file in entries:
     except:
             print(file)
 
-outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'peakBrake': list(peakBrakeF),
-                         'brakeImpulse': list(brakeImpulse), 'VLR': list(VLR), 'VILR':list(VLRtwo),'PkMed':list(PkMed),
-                         'PkLat':list(PkLat), 'CT':list(CT)})
+outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'pBF': list(peakBrakeF),
+                         'brakeImpulse': list(brakeImpulse), 'VALR': list(VLR), 'VILR':list(VLRtwo),'pMF':list(PkMed),
+                         'pLF':list(PkLat), 'CT':list(CT),'pVGRF':list(pkForce), 'meanForce':list(meanForce),
+                         'PropImp':list(propImpulse)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces4.csv")#,mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces.csv")#,mode='a',header=False)
 

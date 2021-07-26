@@ -66,40 +66,82 @@ for file in entries:
         
         dat = dat.drop(dat.columns[[0, 1, 2,3,4,5,6,7,8]], axis=1)  
         dat['t'] = pd.to_timedelta(dat['t'].astype(str)) #Convert time to time delta from start
-        
-        # this is super hacky but works for now
-        for i in range(4):
-            config.append('SD')
-        for i in range(4):
-            config.append('SL')
-        for i in range(4):
-            config.append('DD')
+                
         try:
             met.append(calcMean3min(dat, 'SD_1_Start'))
+            config.append('SD')
+            subject.append(file.split(' ')[0])
         except:
             met.append(calcMean3minLate(dat,'SD_1_Start'))
-        met.append(calcMean3min(dat, 'SD_1_Start'))
-        met.append(calcMean3minLate(dat, 'SD_2_Start'))
-        met.append(calcMean4minLate(dat, 'SD_2_Start'))
-        
-        met.append(calcMean3minLate(dat, 'SL_1_Start'))
-        met.append(calcMean4minLate(dat, 'SL_1_Start'))
-        met.append(calcMean3minLate(dat, 'SL_2_Start'))
-        met.append(calcMean4minLate(dat, 'SL_2_Start'))   
-        
-        met.append(calcMean3minLate(dat, 'DD_1_Start'))
-        met.append(calcMean4minLate(dat, 'DD_1_Start'))
-        met.append(calcMean3minLate(dat, 'DD_2_Start'))
-        met.append(calcMean4minLate(dat, 'DD_2_Start'))
-        
-        for i in range(12):
+            config.append('SD')
             subject.append(file.split(' ')[0])
-
+        try:
+            met.append(calcMean3min(dat, 'SD_1_Start'))
+            config.append('SD')
+            subject.append(file.split(' ')[0])
+        except:
+            met.append(calcMean3minLate(dat, 'SD_1_Start'))
+            config.append('SD')
+            subject.append(file.split(' ')[0])
+        met.append(calcMean3minLate(dat, 'SD_2_Start'))
+        subject.append(file.split(' ')[0])
+        config.append('SD')
+        met.append(calcMean4minLate(dat, 'SD_2_Start'))
+        config.append('SD')
+        subject.append(file.split(' ')[0])
+        
+        try:
+            met.append(calcMean3min(dat, 'SL_1_Start'))
+            config.append('SL')
+            subject.append(file.split(' ')[0])
+        except:
+            met.append(calcMean3minLate(dat, 'SL_1_Start'))
+            config.append('SL')
+            subject.append(file.split(' ')[0])
+        try:
+            met.append(calcMean4min(dat, 'SL_1_Start'))
+            config.append('SL')
+            subject.append(file.split(' ')[0])
+        except:
+            met.append(calcMean4minLate(dat, 'SL_1_Start'))
+            config.append('SL')
+            subject.append(file.split(' ')[0])
+        met.append(calcMean3minLate(dat, 'SL_2_Start'))
+        config.append('SL')
+        subject.append(file.split(' ')[0])
+        met.append(calcMean4minLate(dat, 'SL_2_Start')) 
+        config.append('SL')
+        subject.append(file.split(' ')[0])
+        
+        try:
+            met.append(calcMean3min(dat, 'DD_1_Start'))
+            config.append('DD')
+            subject.append(file.split(' ')[0])
+        except:
+            met.append(calcMean3minLate(dat, 'DD_1_Start'))
+            config.append('DD')
+            subject.append(file.split(' ')[0])
+        try:
+            met.append(calcMean4min(dat, 'DD_1_Start'))
+            config.append('DD')
+            subject.append(file.split(' ')[0])
+        except:
+            met.append(calcMean4minLate(dat, 'DD_1_Start'))
+            config.append('DD')
+            subject.append(file.split(' ')[0])
+        met.append(calcMean3minLate(dat, 'DD_2_Start'))
+        config.append('DD')
+        subject.append(file.split(' ')[0])
+        met.append(calcMean4minLate(dat, 'DD_2_Start'))
+        config.append('DD')
+        subject.append(file.split(' ')[0])
+        
+           
     except:
         print(file)
 
         
 outcomes = pd.DataFrame({'Subject':list(subject),'Config':list(config), 'EE':list(met)})
 
-outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Met.csv', mode = 'a', header = False)
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Met2.csv')#, mode = 'a', header = False)
 

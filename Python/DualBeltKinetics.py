@@ -16,7 +16,7 @@ manualTrim = 0
 run = 0
 fThresh = 80
 writeData = 0; #will write to spreadsheet if 1 entered
-stepLen = 200
+stepLen = 80
 x = np.linspace(0,stepLen,stepLen)
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
