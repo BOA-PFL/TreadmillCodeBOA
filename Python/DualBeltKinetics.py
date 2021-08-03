@@ -12,8 +12,8 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-manualTrim = 0
-run = 0
+manualTrim = 1
+run = 1
 fThresh = 80
 writeData = 0; #will write to spreadsheet if 1 entered
 stepLen = 80
@@ -95,12 +95,21 @@ def findNextZero(force, length):
 def delimitTrial(inputDF):
     # generic function to plot and start/end trial #
     fig, ax = plt.subplots()
-    ax.plot(inputDF.ForcesZ, label = 'Left Force')
-    fig.legend()
-    pts = np.asarray(plt.ginput(2, timeout=-1))
+    
+    ax1 = fig.add_subplot(111)
+    
+    color = 'tab:red'
+    ax1.set_xlabel('time')
+    ax1.set_ylabel('TotalForce(N)', color=color)
+    ax1.plot(inputDF.ForcesZ, color=color, label = 'Total Force')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    ax2.plot(inputDF.LAnklePower, label = 'Ankle Power')
+    pts = np.asarray(plt.ginput(1, timeout=-1))
     plt.close()
-    outputDat = inputDF.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
+    outputDat = inputDF.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[0,0])+2000),:]
     outputDat = outputDat.reset_index()
+       
     return(outputDat)
 
 def filterForce(inputForce, sampFrq, cutoffFrq):
@@ -221,14 +230,15 @@ for fName in entries:
         
         #### Trim data to begin and end in a flight phase
                 # Trim the trials to a smaller section and threshold force
+        print(fName)
         if manualTrim == 1:
             print('Select start and end of analysis trial 1')
             forceDat = delimitTrial(dat)
         else: 
             forceDat = dat
 
-        
-        forceZ = trimForce(forceDat, fThresh)
+    
+        trimmedForce = trimForce(forceDat, fThresh)
         MForce = forceDat.ForcesX
         brakeFilt = forceDat.ForcesY * -1
         
@@ -238,7 +248,7 @@ for fName in entries:
         config = config.split(sep = ' - ')[0]
         
         # define a ton and unpack variables
-        trimmedForce = trimForce(forceDat, fThresh)
+
         XtotalForce = forceDat.ForcesX
         YtotalForce = forceDat.ForcesY
         AnklePower = forceDat.LAnklePower
@@ -281,69 +291,69 @@ for fName in entries:
         if run == 1:
             if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])): #if landing 0 is left, keep all evens
                 trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
-                trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+                trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
             else: #keep all odds
                 trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
-                trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+                trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
         else:
             trimmedLandings = landings
             trimmedTakesoffs = takeoffs
         
                 
-        for countVar, landing in enumerate(landings):
+        for countVar, landing in enumerate(trimmedLandings):
             try:
                 # separate into positive and negatiave work
-                pkAnklePw.append( np.max(AnklePower[landing:takeoffs[countVar]]) )
-                ankleNetWork.append( np.sum(AnklePower[landing:takeoffs[countVar]] ))
-                ankleNegWork.append( sum(i for i in AnklePower[landing:takeoffs[countVar]] if i < 0) )
-                anklePosWork.append( sum(i for i in AnklePower[landing:takeoffs[countVar]] if i > 0) )
+                pkAnklePw.append( np.max(AnklePower[landing:trimmedTakesoffs[countVar]]) )
+                ankleNetWork.append( np.sum(AnklePower[landing:trimmedTakesoffs[countVar]] ))
+                ankleNegWork.append( sum(i for i in AnklePower[landing:trimmedTakesoffs[countVar]] if i < 0) )
+                anklePosWork.append( sum(i for i in AnklePower[landing:trimmedTakesoffs[countVar]] if i > 0) )
                 
                 
-                pkKneePw.append( np.max( KneePower[landing:takeoffs[countVar]]) )
-                kneeNetWork.append( np.sum( KneePower[landing:takeoffs[countVar]]) )
-                kneeNegWork.append(sum(i for i in KneePower[landing:takeoffs[countVar]] if i < 0) )
-                kneePosWork.append( sum(i for i in KneePower[landing:takeoffs[countVar]] if i > 0) )
+                pkKneePw.append( np.max( KneePower[landing:trimmedTakesoffs[countVar]]) )
+                kneeNetWork.append( np.sum( KneePower[landing:trimmedTakesoffs[countVar]]) )
+                kneeNegWork.append(sum(i for i in KneePower[landing:trimmedTakesoffs[countVar]] if i < 0) )
+                kneePosWork.append( sum(i for i in KneePower[landing:trimmedTakesoffs[countVar]] if i > 0) )
                 
-                pkHipPw.append( np.max(HipPower[landing:takeoffs[countVar]]) )
-                hipNetWork.append( np.sum(HipPower[landing:takeoffs[countVar]]) )
-                hipNegWork.append( sum(i for i in HipPower[landing:takeoffs[countVar]] if i < 0) )
-                hipPosWork.append( sum(i for i in HipPower[landing:takeoffs[countVar]] if i > 0) )
+                pkHipPw.append( np.max(HipPower[landing:trimmedTakesoffs[countVar]]) )
+                hipNetWork.append( np.sum(HipPower[landing:trimmedTakesoffs[countVar]]) )
+                hipNegWork.append( sum(i for i in HipPower[landing:trimmedTakesoffs[countVar]] if i < 0) )
+                hipPosWork.append( sum(i for i in HipPower[landing:trimmedTakesoffs[countVar]] if i > 0) )
                 
-                pkAnkleInv.append( np.max(AnkleInversion[landing:takeoffs[countVar]]) )
-                pkAnkleFlex.append( np.max(AnkleFlexion[landing:takeoffs[countVar]]) )
-                ankleFlexROM.append( np.max(AnkleFlexion[landing:takeoffs[countVar]]) - np.min(AnkleFlexion[landing:takeoffs[countVar]]) )
-                ankleInvROM.append( np.max(AnkleInversion[landing:takeoffs[countVar]]) - np.min(AnkleInversion[landing:takeoffs[countVar]]) )
-                ankleAbdROM.append( np.max(AnkleAbd[landing:takeoffs[countVar]]) - np.min(AnkleAbd[landing:takeoffs[countVar]]) )           
+                pkAnkleInv.append( np.max(AnkleInversion[landing:trimmedTakesoffs[countVar]]) )
+                pkAnkleFlex.append( np.max(AnkleFlexion[landing:trimmedTakesoffs[countVar]]) )
+                ankleFlexROM.append( np.max(AnkleFlexion[landing:trimmedTakesoffs[countVar]]) - np.min(AnkleFlexion[landing:trimmedTakesoffs[countVar]]) )
+                ankleInvROM.append( np.max(AnkleInversion[landing:trimmedTakesoffs[countVar]]) - np.min(AnkleInversion[landing:trimmedTakesoffs[countVar]]) )
+                ankleAbdROM.append( np.max(AnkleAbd[landing:trimmedTakesoffs[countVar]]) - np.min(AnkleAbd[landing:trimmedTakesoffs[countVar]]) )           
                 
-                pkKneeFlex.append( np.max(KneeFlex[landing:takeoffs[countVar]]) ) 
-                pkKneeRot.append( np.max(KneeRot[landing:takeoffs[countVar]]) )
+                pkKneeFlex.append( np.max(KneeFlex[landing:trimmedTakesoffs[countVar]]) ) 
+                pkKneeRot.append( np.max(KneeRot[landing:trimmedTakesoffs[countVar]]) )
                 
-                pkHipFlex.append( np.max(HipFlex[landing:takeoffs[countVar]]) )
-                pkHipRot.append( np.max(HipInt[landing:takeoffs[countVar]]) )
-                pkHipAbd.append( np.max(HipAbd[landing:takeoffs[countVar]]) )
-                hipRotROM.append( np.max(HipInt[landing:takeoffs[countVar]]) - np.min(HipInt[landing:takeoffs[countVar]]))
-                hipAbdROM.append( np.max(HipAbd[landing:takeoffs[countVar]]) - np.min(HipAbd[landing:takeoffs[countVar]]))
+                pkHipFlex.append( np.max(HipFlex[landing:trimmedTakesoffs[countVar]]) )
+                pkHipRot.append( np.max(HipInt[landing:trimmedTakesoffs[countVar]]) )
+                pkHipAbd.append( np.max(HipAbd[landing:trimmedTakesoffs[countVar]]) )
+                hipRotROM.append( np.max(HipInt[landing:trimmedTakesoffs[countVar]]) - np.min(HipInt[landing:trimmedTakesoffs[countVar]]))
+                hipAbdROM.append( np.max(HipAbd[landing:trimmedTakesoffs[countVar]]) - np.min(HipAbd[landing:trimmedTakesoffs[countVar]]))
                 
-                pkAnkleMomX.append( np.max(AnkleMomX[landing:takeoffs[countVar]]) )
-                pkAnkleMomY.append( np.max(AnkleMomY[landing:takeoffs[countVar]]) )
-                pkAnkleMomZ.append( np.max(AnkleMomZ[landing:takeoffs[countVar]]) )
-                minAnkleMomX.append( np.min(AnkleMomX[landing:takeoffs[countVar]]) )
-                minAnkleMomY.append( np.min(AnkleMomY[landing:takeoffs[countVar]]) )
-                minAnkleMomZ.append( np.min(AnkleMomZ[landing:takeoffs[countVar]]) )
+                pkAnkleMomX.append( np.max(AnkleMomX[landing:trimmedTakesoffs[countVar]]) )
+                pkAnkleMomY.append( np.max(AnkleMomY[landing:trimmedTakesoffs[countVar]]) )
+                pkAnkleMomZ.append( np.max(AnkleMomZ[landing:trimmedTakesoffs[countVar]]) )
+                minAnkleMomX.append( np.min(AnkleMomX[landing:trimmedTakesoffs[countVar]]) )
+                minAnkleMomY.append( np.min(AnkleMomY[landing:trimmedTakesoffs[countVar]]) )
+                minAnkleMomZ.append( np.min(AnkleMomZ[landing:trimmedTakesoffs[countVar]]) )
                 
-                pkKneeMomX.append( np.max(KneeMomX[landing:takeoffs[countVar]]) )
-                pkKneeMomY.append( np.max(KneeMomY[landing:takeoffs[countVar]]) )
-                pkKneeMomZ.append( np.max(KneeMomZ[landing:takeoffs[countVar]]) )
-                minKneeMomX.append( np.min(KneeMomX[landing:takeoffs[countVar]]) )
-                minKneeMomY.append( np.min(KneeMomY[landing:takeoffs[countVar]]) )
-                minKneeMomZ.append( np.min(KneeMomZ[landing:takeoffs[countVar]]) )        
+                pkKneeMomX.append( np.max(KneeMomX[landing:trimmedTakesoffs[countVar]]) )
+                pkKneeMomY.append( np.max(KneeMomY[landing:trimmedTakesoffs[countVar]]) )
+                pkKneeMomZ.append( np.max(KneeMomZ[landing:trimmedTakesoffs[countVar]]) )
+                minKneeMomX.append( np.min(KneeMomX[landing:trimmedTakesoffs[countVar]]) )
+                minKneeMomY.append( np.min(KneeMomY[landing:trimmedTakesoffs[countVar]]) )
+                minKneeMomZ.append( np.min(KneeMomZ[landing:trimmedTakesoffs[countVar]]) )        
                   
-                pkHipMomX.append( np.max(HipMomX[landing:takeoffs[countVar]]) )
-                pkHipMomY.append( np.max(HipMomY[landing:takeoffs[countVar]]) )
-                pkHipMomZ.append( np.max(HipMomZ[landing:takeoffs[countVar]]) )
-                minHipMomX.append( np.min(HipMomX[landing:takeoffs[countVar]]) )
-                minHipMomY.append( np.min(HipMomY[landing:takeoffs[countVar]]) )
-                minHipMomZ.append( np.min(HipMomZ[landing:takeoffs[countVar]]) )      
+                pkHipMomX.append( np.max(HipMomX[landing:trimmedTakesoffs[countVar]]) )
+                pkHipMomY.append( np.max(HipMomY[landing:trimmedTakesoffs[countVar]]) )
+                pkHipMomZ.append( np.max(HipMomZ[landing:trimmedTakesoffs[countVar]]) )
+                minHipMomX.append( np.min(HipMomX[landing:trimmedTakesoffs[countVar]]) )
+                minHipMomY.append( np.min(HipMomY[landing:trimmedTakesoffs[countVar]]) )
+                minHipMomZ.append( np.min(HipMomZ[landing:trimmedTakesoffs[countVar]]) )      
                 
                 sName.append(subName)
                 tmpConfig.append(config)
