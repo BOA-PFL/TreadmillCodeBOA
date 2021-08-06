@@ -111,4 +111,4 @@ outcomes = pd.DataFrame({'Subject':list(subject),'Config':list(config), 'EE':lis
 outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\Metabolics\\MetResults.csv')#, mode = 'a', header = False)
 
 outcomes2 = pd.DataFrame({'Subject':list(subject2), 'Config':list(config2), 'EE':list(met2)})
-outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\Metabolics\\MetResults2.csv')
+outcomes2.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\Metabolics\\MetResults2.csv')

@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Sep 23 11:38:57 2020
-
+Analyzing the force data from our Bertec duel belt Treadmill
+Calculates relevent metrics for running and walking with optional parameters 
+at the top. 
+manualTrim = 1 means you want to plot each force time series 
+and select when the trial starts and ends
+plottingEnabled will show a plot for each iteration (not recommended)
+fThresh is the force threshold to set force to 0 
 @author: Daniel.Feeney
 """
 
@@ -134,6 +140,21 @@ def trimTakeoffs(landingVec, takeoffVec):
         return(takeoffVec)
     else:
         return(takeoffVec)
+    
+    # preallocate matrix for force and fill in with force data
+def forceMatrix(inputForce, landings, noSteps, stepLength):
+    #input a force signal, return matrix with n rows (for each landing) by m col
+    #for each point in stepLen.
+    #skip every other landing for TM FP data
+    preForce = np.zeros((noSteps,stepLength))
+    
+    for iterVar, landing in enumerate(landings):
+        try:
+            preForce[iterVar,] = inputForce[landing:landing+stepLength]
+        except:
+            print(landing)
+            
+    return preForce
 
 #Preallocation
 loadingRate = []
@@ -152,9 +173,12 @@ CT = []
 meanForce = []
 propImpulse = []
 
+forceTime = np.zeros((len(entries),210))
+subShort = []
+configShort = []
 # when COPx is more negative, that is left foot strike
 ## loop through the selected files
-for file in entries:
+for loop, file in enumerate(entries):
     try:
         
         fName = file #Load one file at a time
@@ -201,7 +225,20 @@ for file in entries:
         if np.mean(brakeFilt[landings[1]:landings[1]+100]) > 0:
             brakeFilt = -1 * brakeFilt
         #For each landing, calculate rolling averages and time to stabilize
-    
+        ### Start SPM test ###
+        if int(fName.split(' - ')[0].split('_')[2]) == 1:
+            stackedF = forceMatrix(forceZ, trimmedLandings, len(trimmedLandings), 210)
+            forceTime[loop,:] = np.mean(stackedF, axis = 0)
+            subShort.append(int(subName.split('S')[1]))
+            if config == 'SL':
+                configShort.append(0)
+            elif config == 'SD':
+                configShort.append(1)
+            else:
+                configShort.append(2)
+            
+        
+        ### end test ###
         for countVar, landing in enumerate(trimmedLandings):
             try:
                # Define where next zero is
@@ -249,5 +286,12 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'pBF':
                          'pLF':list(PkLat), 'CT':list(CT),'pVGRF':list(pkForce), 'meanForce':list(meanForce),
                          'PropImp':list(propImpulse)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces.csv")#,mode='a',header=False)
+#outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces.csv")#,mode='a',header=False)
 
+# not currently working. Need to make this a 2 way Anova (subject and config). Getting close
+import spm1d
+forceTime = forceTime[~np.all(forceTime == 0, axis=1)]
+forceTime = forceTime[:,1:]
+F = spm1d.stats.anova1rm(forceTime, np.array(configShort), np.array(subShort))
+Fi = F.inference(alpha=0.05)
+Fi.plot()

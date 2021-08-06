@@ -12,8 +12,8 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-manualTrim = 1
-run = 1
+manualTrim = 0
+runTrial = 1
 fThresh = 80
 writeData = 0; #will write to spreadsheet if 1 entered
 stepLen = 80
@@ -23,6 +23,7 @@ pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lo
 # Read in balance file
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KineticsKinematics\\'
+#fPath = fPath = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\KineticsKinematics\\TM\\'
 
 fileExt = r".txt"
 entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
@@ -230,7 +231,6 @@ for fName in entries:
         
         #### Trim data to begin and end in a flight phase
                 # Trim the trials to a smaller section and threshold force
-        print(fName)
         if manualTrim == 1:
             print('Select start and end of analysis trial 1')
             forceDat = delimitTrial(dat)
@@ -288,16 +288,30 @@ for fName in entries:
         #landings = trimLandings(landings, takeoffs)
         takeoffs = trimTakeoffs(landings, takeoffs)
         
-        if run == 1:
-            if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])): #if landing 0 is left, keep all evens
-                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
-                trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
-            else: #keep all odds
-                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
-                trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+        
+        if runTrial == 1:
+            #The exports from TMM have different column names, so this takes care of that
+            if 'LCOPx' in dat:
+                #if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]]) and
+                #    np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
+                if (np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
+                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+                else:
+                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+            else:
+                #if (np.mean(dat.COP_X[landings[0]:takeoffs[0]]) < np.mean(dat.COP_X[landings[1]:takeoffs[1]])and
+                #    np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
+                if (np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
+                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
+                else:
+                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
         else:
             trimmedLandings = landings
-            trimmedTakesoffs = takeoffs
+            trimemdTakesoffs = takeoffs
         
                 
         for countVar, landing in enumerate(trimmedLandings):
@@ -378,7 +392,7 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'minAnkleMomZ':list(minAnkleMomZ)})
 
 outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics2.csv')#, mode ='a',header = False)
-#outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\KinematicsKinetics.csv', mode ='a',header = False)
+#outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\KineticsKinematics\\TM\\KinKinematics.csv')#, mode ='a',header = False)
 
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):
