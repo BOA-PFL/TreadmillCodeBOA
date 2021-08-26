@@ -237,7 +237,6 @@ for fName in entries:
         else: 
             forceDat = dat
 
-    
         trimmedForce = trimForce(forceDat, fThresh)
         MForce = forceDat.ForcesX
         brakeFilt = forceDat.ForcesY * -1
@@ -290,25 +289,15 @@ for fName in entries:
         
         
         if runTrial == 1:
-            #The exports from TMM have different column names, so this takes care of that
-            if 'LCOPx' in dat:
-                #if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]]) and
-                #    np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
-                if (np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
-                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
-                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
-                else:
-                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
-                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+            #Find the first step with a true ankle power
+
+            if (np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
+                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
+                trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
             else:
-                #if (np.mean(dat.COP_X[landings[0]:takeoffs[0]]) < np.mean(dat.COP_X[landings[1]:takeoffs[1]])and
-                #    np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
-                if (np.max(dat.LAnklePower[landings[0]:takeoffs[0]]) > np.max(dat.LAnklePower[landings[1]:takeoffs[1]])):
-                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
-                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
-                else:
-                    trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
-                    trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+                trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
+                trimmedTakesoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
+
         else:
             trimmedLandings = landings
             trimemdTakesoffs = takeoffs

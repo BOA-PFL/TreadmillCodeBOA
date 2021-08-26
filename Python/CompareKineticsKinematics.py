@@ -13,9 +13,9 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 43
-fileToLoad2 = 45
-fileToLoad3 = 47
+fileToLoad = 73
+fileToLoad2 = 74
+fileToLoad3 = 75
 runTrial = 1 #set to 1 for running 
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
@@ -31,6 +31,18 @@ fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\D
 fileExt = r".txt"
 entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 
+#####
+SMALL_SIZE = 18
+MEDIUM_SIZE = 20
+BIGGER_SIZE = 22
+
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 # list of functions 
 # finding landings on the force plate once the filtered force exceeds the force threshold
@@ -48,25 +60,6 @@ def findTakeoffs(force, fThresh):
         if force[step] >= fThresh and force[step + 1] == 0:
             lto.append(step + 1)
     return lto
-
-def calcVLR(force, startVal, lengthFwd):
-    # function to calculate VLR from 80 and 20% of the max value observed in the first n
-    # indices (n defined by lengthFwd). 
-    maxF = np.max(force[startVal:startVal+lengthFwd])
-    eightyPctMax = 0.8 * maxF
-    twentyPctMax = 0.2 * maxF
-    # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
-    eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
-                      if val > eightyPctMax) 
-    twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
-                      if val > twentyPctMax) 
-    VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
-    return(VLR)
-    
-#Find max braking force moving forward
-def calcPeakBrake(force, landing, length):
-    newForce = np.array(force)
-    return min(newForce[landing:landing+length])
 
 def findNextZero(force, length):
     # Starting at a landing, look forward (after first 15 indices)
@@ -134,7 +127,7 @@ def makeCompFig(avgVal1, sdVal1, avgVal2, sdVal2, avgVal3, sdVal3, avgVal4, sdVa
         # plot ensemble average values from landings defined in a
         # a different function above. Takes the avg and std of the columns
         # as inputs
-        fig, (ax1, ax2, ax3) = plt.subplots(1,3)
+        fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(18,9))
         ax1.plot(x, avgVal1, 'k', color='#000000', label = '{}'.format(config1))
         ax1.plot(x, avgVal4, 'k', color = '#DC582A', label = '{}'.format(config2))
         ax1.plot(x, avgVal7, 'k', color = '#CAF0E4', label = '{}'.format(config3))
@@ -159,9 +152,9 @@ def makeCompFig(avgVal1, sdVal1, avgVal2, sdVal2, avgVal3, sdVal3, avgVal4, sdVa
         ax2.fill_between(x, avgVal8-sdVal8, avgVal8+sdVal8,
             alpha=0.5, edgecolor='#CAF0E4', facecolor='#CAF0E4')
 
-        ax3.plot(x, avgVal3, 'k', color='#000000', label = 'Lace')
-        ax3.plot(x, avgVal6, 'k', color='#DC582A', label = 'Dual Dial')
-        ax3.plot(x, avgVal9, 'k', color='#CAF0E4', label = 'Single Dial')
+        ax3.plot(x, avgVal3, 'k', color='#000000', label = '{}'.format(config1))
+        ax3.plot(x, avgVal6, 'k', color='#DC582A', label = '{}'.format(config2))
+        ax3.plot(x, avgVal9, 'k', color='#CAF0E4', label = '{}'.format(config3))
         ax3.set_xlabel('Time')
         ax3.set_ylabel(f"{Ylabel3}")
         ax3.fill_between(x, avgVal3-sdVal3, avgVal3+sdVal3,
@@ -176,9 +169,9 @@ def makeCompFig(avgVal1, sdVal1, avgVal2, sdVal2, avgVal3, sdVal3, avgVal4, sdVa
         plt.tight_layout()
     
 # determine if first step is left or right then delete every other
-def toTrimOrNot(data,landings, takeoffs, runTrial):
+def toTrimOrNot(data, landings, takeoffs, runTrial):
     if runTrial == 1:
-        if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])):
+        if ( np.max(data.LAnklePower[landings[0]:takeoffs[0]]) > np.max(data.LAnklePower[landings[1]:takeoffs[1]]) ):
             trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
             trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
         else:
@@ -277,7 +270,7 @@ meanDat1 = ensembleMeanData(np.mean(forceMatrix(trimmedForce, trimmedLandings, 1
                 np.mean(forceMatrix(dat.LKneeFlex, trimmedLandings, 10, stepLen),axis=0), np.mean(forceMatrix(dat.LKneeRot, trimmedLandings, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat.LKneeMomentX, trimmedLandings, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat.LKneeMomentY, trimmedLandings, 10, stepLen),axis=0), np.mean(forceMatrix(dat.LKneeMomentZ, trimmedLandings, 10, stepLen),axis=0),
-                np.mean(forceMatrix(dat.LHipFlex, trimmedLandings, 10, stepLen),axis=0), np.mean(forceMatrix(dat.LHipInt, trimmedLandings, 10, stepLen),axis=0),
+                np.mean(forceMatrix(dat.LHipFlex, trimmedLandings, 10, stepLen),axis=0), np.mean(forceMatrix(dat.LHipRot, trimmedLandings, 10, stepLen),axis=0),
                 np.mean(forceMatrix(dat.LHipAbd, trimmedLandings, 10, stepLen),axis=0), np.mean(forceMatrix(dat.LHipMomentx, trimmedLandings, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat.LHipMomenty, trimmedLandings, 10, stepLen),axis=0), np.mean(forceMatrix(dat.LHipMomentz, trimmedLandings, 10, stepLen),axis=0))
 
@@ -290,7 +283,7 @@ meanDat2 = ensembleMeanData(np.mean(forceMatrix(trimmedForce2, trimmedLandings2,
                 np.mean(forceMatrix(dat2.LKneeFlex, trimmedLandings2, 10, stepLen),axis=0), np.mean(forceMatrix(dat2.LKneeRot, trimmedLandings2, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat2.LKneeMomentX, trimmedLandings2, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat2.LKneeMomentY, trimmedLandings2, 10, stepLen),axis=0), np.mean(forceMatrix(dat2.LKneeMomentZ, trimmedLandings2, 10, stepLen),axis=0),
-                np.mean(forceMatrix(dat2.LHipFlex, trimmedLandings2, 10, stepLen),axis=0), np.mean(forceMatrix(dat2.LHipInt, trimmedLandings2, 10, stepLen),axis=0),
+                np.mean(forceMatrix(dat2.LHipFlex, trimmedLandings2, 10, stepLen),axis=0), np.mean(forceMatrix(dat2.LHipRot, trimmedLandings2, 10, stepLen),axis=0),
                 np.mean(forceMatrix(dat2.LHipAbd, trimmedLandings2, 10, stepLen),axis=0), np.mean(forceMatrix(dat2.LHipMomentx, trimmedLandings2, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat2.LHipMomenty, trimmedLandings2, 10, stepLen),axis=0), np.mean(forceMatrix(dat2.LHipMomentz, trimmedLandings2, 10, stepLen),axis=0))
 
@@ -303,7 +296,7 @@ meanDat3 = ensembleMeanData(np.mean(forceMatrix(trimmedForce3, trimmedLandings3,
                 np.mean(forceMatrix(dat3.LKneeFlex, trimmedLandings3, 10, stepLen),axis=0), np.mean(forceMatrix(dat3.LKneeRot, trimmedLandings3, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat3.LKneeMomentX, trimmedLandings3, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat3.LKneeMomentY, trimmedLandings3, 10, stepLen),axis=0), np.mean(forceMatrix(dat3.LKneeMomentZ, trimmedLandings3, 10, stepLen),axis=0),
-                np.mean(forceMatrix(dat3.LHipFlex, trimmedLandings3, 10, stepLen),axis=0), np.mean(forceMatrix(dat3.LHipInt, trimmedLandings3, 10, stepLen),axis=0),
+                np.mean(forceMatrix(dat3.LHipFlex, trimmedLandings3, 10, stepLen),axis=0), np.mean(forceMatrix(dat3.LHipRot, trimmedLandings3, 10, stepLen),axis=0),
                 np.mean(forceMatrix(dat3.LHipAbd, trimmedLandings3, 10, stepLen),axis=0), np.mean(forceMatrix(dat3.LHipMomentx, trimmedLandings3, 10, stepLen),axis=0), 
                 np.mean(forceMatrix(dat3.LHipMomenty, trimmedLandings3, 10, stepLen),axis=0), np.mean(forceMatrix(dat3.LHipMomentz, trimmedLandings3, 10, stepLen),axis=0))
 
@@ -344,7 +337,7 @@ sdDat1 = ensembleSDData(np.std(forceMatrix(trimmedForce, trimmedLandings, 10, st
                 np.std(forceMatrix(dat.LKneeFlex, trimmedLandings, 10, stepLen),axis=0), np.std(forceMatrix(dat.LKneeRot, trimmedLandings, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat.LKneeMomentX, trimmedLandings, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat.LKneeMomentY, trimmedLandings, 10, stepLen),axis=0), np.std(forceMatrix(dat.LKneeMomentZ, trimmedLandings, 10, stepLen),axis=0),
-                np.std(forceMatrix(dat.LHipFlex, trimmedLandings, 10, stepLen),axis=0), np.std(forceMatrix(dat.LHipInt, trimmedLandings, 10, stepLen),axis=0),
+                np.std(forceMatrix(dat.LHipFlex, trimmedLandings, 10, stepLen),axis=0), np.std(forceMatrix(dat.LHipRot, trimmedLandings, 10, stepLen),axis=0),
                 np.std(forceMatrix(dat.LHipAbd, trimmedLandings, 10, stepLen),axis=0), np.std(forceMatrix(dat.LHipMomentx, trimmedLandings, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat.LHipMomenty, trimmedLandings, 10, stepLen),axis=0), np.std(forceMatrix(dat.LHipMomentz, trimmedLandings, 10, stepLen),axis=0))
 
@@ -357,7 +350,7 @@ sdDat2 = ensembleSDData(np.std(forceMatrix(trimmedForce2, trimmedLandings2, 10, 
                 np.std(forceMatrix(dat2.LKneeFlex, trimmedLandings2, 10, stepLen),axis=0), np.std(forceMatrix(dat2.LKneeRot, trimmedLandings2, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat2.LKneeMomentX, trimmedLandings2, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat2.LKneeMomentY, trimmedLandings2, 10, stepLen),axis=0), np.std(forceMatrix(dat2.LKneeMomentZ, trimmedLandings2, 10, stepLen),axis=0),
-                np.std(forceMatrix(dat2.LHipFlex, trimmedLandings2, 10, stepLen),axis=0), np.std(forceMatrix(dat2.LHipInt, trimmedLandings2, 10, stepLen),axis=0),
+                np.std(forceMatrix(dat2.LHipFlex, trimmedLandings2, 10, stepLen),axis=0), np.std(forceMatrix(dat2.LHipRot, trimmedLandings2, 10, stepLen),axis=0),
                 np.std(forceMatrix(dat2.LHipAbd, trimmedLandings2, 10, stepLen),axis=0), np.std(forceMatrix(dat2.LHipMomentx, trimmedLandings2, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat2.LHipMomenty, trimmedLandings2, 10, stepLen),axis=0), np.std(forceMatrix(dat2.LHipMomentz, trimmedLandings2, 10, stepLen),axis=0))
 
@@ -370,7 +363,7 @@ sdDat3 = ensembleSDData(np.std(forceMatrix(trimmedForce3, trimmedLandings3, 10, 
                 np.std(forceMatrix(dat3.LKneeFlex, trimmedLandings3, 10, stepLen),axis=0), np.std(forceMatrix(dat3.LKneeRot, trimmedLandings3, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat3.LKneeMomentX, trimmedLandings3, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat3.LKneeMomentY, trimmedLandings3, 10, stepLen),axis=0), np.std(forceMatrix(dat3.LKneeMomentZ, trimmedLandings3, 10, stepLen),axis=0),
-                np.std(forceMatrix(dat3.LHipFlex, trimmedLandings3, 10, stepLen),axis=0), np.std(forceMatrix(dat3.LHipInt, trimmedLandings3, 10, stepLen),axis=0),
+                np.std(forceMatrix(dat3.LHipFlex, trimmedLandings3, 10, stepLen),axis=0), np.std(forceMatrix(dat3.LHipRot, trimmedLandings3, 10, stepLen),axis=0),
                 np.std(forceMatrix(dat3.LHipAbd, trimmedLandings3, 10, stepLen),axis=0), np.std(forceMatrix(dat3.LHipMomentx, trimmedLandings3, 10, stepLen),axis=0), 
                 np.std(forceMatrix(dat3.LHipMomenty, trimmedLandings3, 10, stepLen),axis=0), np.std(forceMatrix(dat3.LHipMomentz, trimmedLandings3, 10, stepLen),axis=0))
 
@@ -387,6 +380,11 @@ makeCompFig(meanDat1.AnklePower, sdDat1.sdAnklePower, meanDat1.KneePower, sdDat1
             meanDat2.AnklePower, sdDat2.sdAnklePower, meanDat2.KneePower, sdDat2.sdKneePower, meanDat2.HipPower, sdDat2.sdHipPower,
             meanDat3.AnklePower, sdDat3.sdAnklePower, meanDat3.KneePower, sdDat3.sdKneePower, meanDat3.HipPower, sdDat3.sdHipPower,
             'Ankle Power','Knee Power','Hip Power')
+
+makeCompFig(meanDat1.AnkleFlex, sdDat1.sdAnkleFlex, meanDat1.KneeFlex, sdDat1.sdKneeFlex, meanDat1.HipFlex, sdDat1.sdHipFlex, 
+            meanDat2.AnkleFlex, sdDat2.sdAnkleFlex, meanDat2.KneeFlex, sdDat2.sdKneeFlex, meanDat2.HipFlex, sdDat2.sdHipFlex,
+            meanDat3.AnkleFlex, sdDat3.sdAnkleFlex, meanDat3.KneeFlex, sdDat3.sdKneeFlex, meanDat3.HipFlex, sdDat3.sdHipFlex,
+            'Ankle Flexion','Knee Flexion','Hip Flexion')
 
 makeCompFig(meanDat1.AnkleFlex, sdDat1.sdAnkleFlex, meanDat1.KneeFlex, sdDat1.sdKneeFlex, meanDat1.HipFlex, sdDat1.sdHipFlex, 
             meanDat2.AnkleFlex, sdDat2.sdAnkleFlex, meanDat2.KneeFlex, sdDat2.sdKneeFlex, meanDat2.HipFlex, sdDat2.sdHipFlex,

@@ -27,14 +27,20 @@ plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 50
 timeToLoad = 75 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
-
+bigData = 0
 # Read in balance file
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
-#fPath = 'C:\\Users\\Daniel.Feeney\\Boa Technology Inc\\PFL - General\\HikePilot_2021\\Hike Pilot 2021\\Data\\Forces TM\\'
+#fPath = 'C:\\Users\\daniel.feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\TreadmillData\\'
 fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces\\'
 entries = os.listdir(fPath)
 
-
+if bigData == 1:
+    ## need to be modified for each test!
+    Shoe = 'MontBlanc'
+    Brand = 'Altra'
+    Year = '2021'
+    Month = 'June'
+    ##
 # list of functions 
 # finding landings on the force plate once the filtered force exceeds the force threshold
 def findLandings(force):
@@ -172,6 +178,12 @@ PkLat = []
 CT = []
 meanForce = []
 propImpulse = []
+shoes = []
+months = []
+brands = []
+years = []
+segment = []
+shoeCondition = []
 
 forceTime = np.zeros((len(entries),210))
 subShort = []
@@ -186,7 +198,8 @@ for loop, file in enumerate(entries):
         #Parse file name into subject and configuration 
         subName = fName.split(sep = "_")[0]
         config = fName.split(sep = "_")[1]
-        #config = config.split(sep = " ")[0]
+        if bigData == 1:
+            config = fName.split(sep = "_")[2].split(' - ')[0]
 
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
         dat = dat.fillna(0)
@@ -211,7 +224,7 @@ for loop, file in enumerate(entries):
         # determine if first step is left or right then delete every other
         # landing and takeoff. MORE NEGATIVE IS LEFT
         if run == 1:
-            if (np.mean(dat.LCOPx[landings[0]:takeoffs[0]]) < np.mean(dat.LCOPx[landings[1]:takeoffs[1]])): #if landing 0 is left, keep all evens
+            if (np.mean( abs(dat.LCOPx[landings[0]:takeoffs[0]]) ) > np.mean( abs(dat.LCOPx[landings[1]:takeoffs[1]])) ): #if landing 0 is left, keep all evens
                 trimmedLandings = [i for a, i in enumerate(landings) if  a%2 == 0]
                 trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 == 0]
             else: #keep all odds
@@ -225,17 +238,17 @@ for loop, file in enumerate(entries):
         if np.mean(brakeFilt[landings[1]:landings[1]+100]) > 0:
             brakeFilt = -1 * brakeFilt
         #For each landing, calculate rolling averages and time to stabilize
-        ### Start SPM test ###
-        if int(fName.split(' - ')[0].split('_')[2]) == 1:
-            stackedF = forceMatrix(forceZ, trimmedLandings, len(trimmedLandings), 210)
-            forceTime[loop,:] = np.mean(stackedF, axis = 0)
-            subShort.append(int(subName.split('S')[1]))
-            if config == 'SL':
-                configShort.append(0)
-            elif config == 'SD':
-                configShort.append(1)
-            else:
-                configShort.append(2)
+        # ### Start SPM test ###
+        # if int(fName.split(' - ')[0].split('_')[2]) == 1:
+        #     stackedF = forceMatrix(forceZ, trimmedLandings, len(trimmedLandings), 210)
+        #     forceTime[loop,:] = np.mean(stackedF, axis = 0)
+        #     subShort.append(int(subName.split('S')[1]))
+        #     if config == 'SL':
+        #         configShort.append(0)
+        #     elif config == 'SD':
+        #         configShort.append(1)
+        #     else:
+        #         configShort.append(2)
             
         
         ### end test ###
@@ -274,6 +287,16 @@ for loop, file in enumerate(entries):
                     PkLat.append(np.min(MForce[landing:trimmedTakeoffs[countVar]]))
                 except:
                     PkLat.append(0)
+                if bigData:
+                    shoes.append(Shoe)
+                    months.append(Month)
+                    years.append(Year)
+                    brands.append(Brand)
+                    segment.append('trail')
+                    if config == 'Lace':
+                        shoeCondition.append('Lace')
+                    else:
+                        shoeCondition.append('BOA')
                             
             except:
                 print(landing)
@@ -286,12 +309,19 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'pBF':
                          'pLF':list(PkLat), 'CT':list(CT),'pVGRF':list(pkForce), 'meanForce':list(meanForce),
                          'PropImp':list(propImpulse)})
 
-#outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces.csv")#,mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces_L.csv")#,mode='a',header=False)
 
+if bigData == 1:
+    outcomes = pd.DataFrame({'Subject':list(sName), 'ShoeCondition':list(shoeCondition),'Config': list(tmpConfig),
+                             'Segment':list(segment), 'Shoe':list(shoes), 'Brand':list(brands),'year':list(years),
+                             'month':list(months), 'VALR': list(VLR), 'VILR':list(VLRtwo),'pBF': list(peakBrakeF),
+                         'pMF':list(PkMed),'pLF':list(PkLat), 'CT':list(CT)})
+    
+    outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\BigData2021\\BigDataRun.csv',mode='a',header=False)
 # not currently working. Need to make this a 2 way Anova (subject and config). Getting close
-import spm1d
-forceTime = forceTime[~np.all(forceTime == 0, axis=1)]
-forceTime = forceTime[:,1:]
-F = spm1d.stats.anova1rm(forceTime, np.array(configShort), np.array(subShort))
-Fi = F.inference(alpha=0.05)
-Fi.plot()
+# import spm1d
+# forceTime = forceTime[~np.all(forceTime == 0, axis=1)]
+# forceTime = forceTime[:,1:]
+# F = spm1d.stats.anova1rm(forceTime, np.array(configShort), np.array(subShort))
+# Fi = F.inference(alpha=0.05)
+# Fi.plot()

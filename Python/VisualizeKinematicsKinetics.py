@@ -2,8 +2,6 @@
 """
 Created on Mon Jun 14 08:47:20 2021
 creates time series plots of powers, moments, angles, and forces
-the heuristic for finding left foot falls needs to be updated
-since sometimes TMM switches positive Y
 @author: Daniel.Feeney
 """
 
@@ -14,7 +12,7 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 39
+fileToLoad = 92
 runTrial = 1 #set to 1 for running 
 fThresh = 50; #below this value will be set to 0.
 writeData = 0; #will write to spreadsheet if 1 entered
@@ -389,19 +387,19 @@ ax1 = fig.add_subplot(111)
 color = 'tab:red'
 ax1.set_xlabel('time')
 ax1.set_ylabel('LCOP', color=color)
-ax1.plot(dat.COP_X[landings[0]:takeoffs[1]], color=color, label = 'LCOP')
+ax1.plot(dat.COP_X[landings[0]:takeoffs[4]], color=color, label = 'LCOP')
 ax1.tick_params(axis='y', labelcolor=color)
 ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-ax2.plot(dat.LAnklePower[landings[0]:takeoffs[1]], label = 'LAP')
+ax2.plot(dat.LAnklePower[landings[0]:takeoffs[4]], label = 'LAP')
 
-#makeNewFig(avgAnkleFlex, sdAnkleFlex, avgAnkleInv,  sdAnkleInv, avgAnkleAbd, sdAnkleAbd, 'Anlke Flexion', 'Ankle Inversion','AnkleAbduction')
-#makeNewFig(avgAnkMomX, sdAnkleMomX, avgAnkleMomY,  sdAnkleMomY, avgAnkleMomZ, sdAnkleMomZ, 'Anlke X Moment', 'Ankle Y Moment','Ankle Z Moment')
+makeNewFig(avgAnkleFlex, sdAnkleFlex, avgAnkleInv,  sdAnkleInv, avgAnkleAbd, sdAnkleAbd, 'Anlke Flexion', 'Ankle Inversion','AnkleAbduction')
+makeNewFig(avgAnkMomX, sdAnkleMomX, avgAnkleMomY,  sdAnkleMomY, avgAnkleMomZ, sdAnkleMomZ, 'Anlke X Moment', 'Ankle Y Moment','Ankle Z Moment')
 
-#makeNewFig(avgKneeFlex, sdKneeFlex, avgKneeInt,  sdKneeInt, avgAnkleAbd, sdAnkleAbd, 'Knee Flexion', 'Knee Rotation','AnkleAbduction')
-#makeNewFig(avgKneeMomX, sdKneeMomX, avgKneeMomY, sdKneeMomY, avgKneeMomZ, sdKneeMomZ, 'Knee X Moment', 'Knee Y Moment', 'Knee Z Moment')
+makeNewFig(avgKneeFlex, sdKneeFlex, avgKneeInt,  sdKneeInt, avgAnkleAbd, sdAnkleAbd, 'Knee Flexion', 'Knee Rotation','AnkleAbduction')
+makeNewFig(avgKneeMomX, sdKneeMomX, avgKneeMomY, sdKneeMomY, avgKneeMomZ, sdKneeMomZ, 'Knee X Moment', 'Knee Y Moment', 'Knee Z Moment')
 
-#makeNewFig(avgHipFlex, sdHipFlex, avgHipInv,  sdHipInv, avgHipAbd, sdHipAbd, 'Hip Flexion', 'Hip Rotation','Hip Abduction')
-#makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ, 'Hip X Moment', 'Hip Y Moment','Hip Z Moment')
+makeNewFig(avgHipFlex, sdHipFlex, avgHipInv,  sdHipInv, avgHipAbd, sdHipAbd, 'Hip Flexion', 'Hip Rotation','Hip Abduction')
+makeNewFig(avgHipMomX, sdHipMomX, avgHipMomY,  sdHipMomY, avgHipMomZ, sdHipMomZ, 'Hip X Moment', 'Hip Y Moment','Hip Z Moment')
 
 
 # Full time series data for investigations of raw data if needed 
