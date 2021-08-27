@@ -386,8 +386,18 @@ makeCompFig(meanDat1.AnkleFlex, sdDat1.sdAnkleFlex, meanDat1.KneeFlex, sdDat1.sd
             meanDat3.AnkleFlex, sdDat3.sdAnkleFlex, meanDat3.KneeFlex, sdDat3.sdKneeFlex, meanDat3.HipFlex, sdDat3.sdHipFlex,
             'Ankle Flexion','Knee Flexion','Hip Flexion')
 
-makeCompFig(meanDat1.AnkleFlex, sdDat1.sdAnkleFlex, meanDat1.KneeFlex, sdDat1.sdKneeFlex, meanDat1.HipFlex, sdDat1.sdHipFlex, 
-            meanDat2.AnkleFlex, sdDat2.sdAnkleFlex, meanDat2.KneeFlex, sdDat2.sdKneeFlex, meanDat2.HipFlex, sdDat2.sdHipFlex,
-            meanDat3.AnkleFlex, sdDat3.sdAnkleFlex, meanDat3.KneeFlex, sdDat3.sdKneeFlex, meanDat3.HipFlex, sdDat3.sdHipFlex,
-            'Ankle Flexion','Knee Flexion','Hip Flexion')
+makeCompFig(meanDat1.AnkleMomX, sdDat1.sdAnkleMomX, meanDat1.AnkleMomY, sdDat1.sdAnkleMomY, meanDat1.AnkleMomZ, sdDat1.sdAnkleMomZ, 
+            meanDat2.AnkleMomX, sdDat2.sdAnkleMomX, meanDat2.AnkleMomY, sdDat2.sdAnkleMomY, meanDat2.AnkleMomZ, sdDat2.sdAnkleMomZ,
+            meanDat3.AnkleMomX, sdDat3.sdAnkleMomX, meanDat3.AnkleMomY, sdDat3.sdAnkleMomY, meanDat3.AnkleMomZ, sdDat3.sdAnkleMomZ,
+            'Ankle X','Ankle Y',' Ankle Z')
+
+makeCompFig(meanDat1.KneeMomX, sdDat1.sdKneeMomX, meanDat1.KneeMomY, sdDat1.sdKneeMomY, meanDat1.KneeMomZ, sdDat1.sdKneeMomZ, 
+            meanDat2.KneeMomX, sdDat2.sdKneeMomX, meanDat2.KneeMomY, sdDat2.sdKneeMomY, meanDat2.KneeMomZ, sdDat2.sdKneeMomZ,
+            meanDat3.KneeMomX, sdDat3.sdKneeMomX, meanDat3.KneeMomY, sdDat3.sdKneeMomY, meanDat3.KneeMomZ, sdDat3.sdKneeMomZ,
+            'Knee X','Knee Y',' Knee Z')
+
+makeCompFig(meanDat1.HipMomX, sdDat1.sdHipMomX, meanDat1.HipMomY, sdDat1.sdHipMomY, meanDat1.HipMomZ, sdDat1.sdHipMomZ, 
+            meanDat2.HipMomX, sdDat2.sdHipMomX, meanDat2.HipMomY, sdDat2.sdHipMomY, meanDat2.HipMomZ, sdDat2.sdHipMomZ,
+            meanDat3.HipMomX, sdDat3.sdHipMomX, meanDat3.HipMomY, sdDat3.sdHipMomY, meanDat3.HipMomZ, sdDat3.sdHipMomZ,
+            'Hip X','Hip Y',' Hip Z')
 
