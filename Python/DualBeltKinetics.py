@@ -209,6 +209,9 @@ minHipMomZ = []
 
 hipRotROM= []
 hipAbdROM = []
+hipFlexROM = []
+kneeRotROM = []
+kneeFlexROM = []
 
 sName = []
 tmpConfig = []
@@ -336,6 +339,9 @@ for fName in entries:
                 pkHipAbd.append( np.max(HipAbd[landing:trimmedTakesoffs[countVar]]) )
                 hipRotROM.append( np.max(HipInt[landing:trimmedTakesoffs[countVar]]) - np.min(HipInt[landing:trimmedTakesoffs[countVar]]))
                 hipAbdROM.append( np.max(HipAbd[landing:trimmedTakesoffs[countVar]]) - np.min(HipAbd[landing:trimmedTakesoffs[countVar]]))
+                kneeRotROM.append( np.max(KneeRot[landing:trimmedTakesoffs[countVar]]) - np.min(KneeRot[landing:trimmedTakesoffs[countVar]]))
+                hipFlexROM.append( np.max(HipFlex[landing:trimmedTakesoffs[countVar]]) - np.min(HipFlex[landing:trimmedTakesoffs[countVar]]) )
+                kneeFlexROM.append( np.max(KneeFlex[landing:trimmedTakesoffs[countVar]]) - np.min(KneeFlex[landing:trimmedTakesoffs[countVar]]) )
                 
                 pkAnkleMomX.append( np.max(AnkleMomX[landing:trimmedTakesoffs[countVar]]) )
                 pkAnkleMomY.append( np.max(AnkleMomY[landing:trimmedTakesoffs[countVar]]) )
@@ -378,9 +384,10 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'pkKneeRot':list(pkKneeRot), 'pkHipAbd':list(pkHipAbd), 'pkHipFlex':list(pkHipFlex),'pkHipInt':list(pkHipRot),
                          'AnkleAbdROM':list(ankleAbdROM), 'AnkleInvROM':list(ankleInvROM), 'AnkleFlexROM':list(ankleFlexROM),
                          'minHipMomZ':list(minHipMomZ), 'minHipMomY':list(minHipMomY), 'minKneeMomZ':list(minKneeMomZ), 'MinKneeMomY':list(minKneeMomY),
-                         'minAnkleMomZ':list(minAnkleMomZ)})
+                         'minAnkleMomZ':list(minAnkleMomZ), 'hipFlexROM':list(hipFlexROM), 'kneeRotROM':list(kneeRotROM), 'kneeFlexROM':list(kneeFlexROM),
+                         'pkHipMomX':list(pkHipMomX),  'pkHipMomY':list(pkHipMomY), 'pkHipMomZ':list(pkHipMomZ)})
 
-outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKinetics2.csv')#, mode ='a',header = False)
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKineticsROM.csv')#, mode ='a',header = False)
 #outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\KineticsKinematics\\TM\\KinKinematics.csv')#, mode ='a',header = False)
 
 

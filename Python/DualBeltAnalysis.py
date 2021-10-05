@@ -107,7 +107,6 @@ def findNextZero(force, length):
             break
     return step
 
-
 def delimitTrial(inputDF):
     # generic function to plot and start/end trial #
     fig, ax = plt.subplots()
@@ -309,7 +308,7 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'pBF':
                          'pLF':list(PkLat), 'CT':list(CT),'pVGRF':list(pkForce), 'meanForce':list(meanForce),
                          'PropImp':list(propImpulse)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces_L.csv")#,mode='a',header=False)
+outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces2.csv",mode='a',header=False)
 
 if bigData == 1:
     outcomes = pd.DataFrame({'Subject':list(sName), 'ShoeCondition':list(shoeCondition),'Config': list(tmpConfig),

@@ -13,17 +13,18 @@ import os
 import scipy.signal as sig
 
 # Define constants and options
-fileToLoad = 73
-fileToLoad2 = 74
-fileToLoad3 = 75
+fileToLoad = 83
+fileToLoad2 = 84
+fileToLoad3 = 85
 runTrial = 1 #set to 1 for running 
 fThresh = 50; #below this value will be set to 0.
-writeData = 0; #will write to spreadsheet if 1 entered
 plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 stepLen = 50
+
 manualTrim = 0
 x = np.linspace(0,stepLen,stepLen)
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
+subMass = 70
 
 # Read in balance file
 #fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Hike Pilot 2021\\TM\Kinetics\\'
@@ -104,7 +105,7 @@ def forceMatrix(inputForce, landings, noSteps, stepLength):
     
     for iterVar, landing in enumerate(landings):
         try:
-            preForce[iterVar,] = inputForce[landing:landing+stepLength]
+            preForce[iterVar,] = inputForce[landing:landing+stepLength] 
         except:
             print(landing)
             
@@ -121,6 +122,9 @@ def defThreshold(inputDF):
         fThresh = pts[0][1]
         return(fThresh)
     
+color1 = '#ff0000'
+color2 = '#FFFF00'
+color3 = '#0000FF'
 def makeCompFig(avgVal1, sdVal1, avgVal2, sdVal2, avgVal3, sdVal3, avgVal4, sdVal4, 
                 avgVal5, sdVal5,avgVal6, sdVal6, avgVal7, sdVal7, avgVal8, sdVal8,
                 avgVal9, sdVal9, Ylabel1, Ylabel2, Ylabel3):
@@ -128,41 +132,41 @@ def makeCompFig(avgVal1, sdVal1, avgVal2, sdVal2, avgVal3, sdVal3, avgVal4, sdVa
         # a different function above. Takes the avg and std of the columns
         # as inputs
         fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(18,9))
-        ax1.plot(x, avgVal1, 'k', color='#000000', label = '{}'.format(config1))
-        ax1.plot(x, avgVal4, 'k', color = '#DC582A', label = '{}'.format(config2))
-        ax1.plot(x, avgVal7, 'k', color = '#CAF0E4', label = '{}'.format(config3))
+        ax1.plot(x, avgVal1, 'k', color=color1, label = '{}'.format(config1), linewidth = 2)
+        ax1.plot(x, avgVal4, 'k', color = color2, label = '{}'.format(config2), linewidth = 2)
+        ax1.plot(x, avgVal7, 'k', color =color3, label = '{}'.format(config3), linewidth = 2)
         ax1.set_xlabel('Time')
         ax1.set_ylabel(f"{Ylabel1}")
         ax1.fill_between(x, avgVal1-sdVal1, avgVal1+sdVal1,
-            alpha=0.5, edgecolor='#000000', facecolor='#000000')
+            alpha=0.25, edgecolor=color1, facecolor=color1)
         ax1.fill_between(x, avgVal4-sdVal4, avgVal4+sdVal4,
-            alpha=0.5, edgecolor='#DC582A', facecolor='#DC582A')
+            alpha=0.25, edgecolor=color2, facecolor=color2)
         ax1.fill_between(x, avgVal7-sdVal7, avgVal7+sdVal7,
-            alpha=0.5, edgecolor='#CAF0E4', facecolor='#CAF0E4')
+            alpha=0.25, edgecolor=color3, facecolor=color3)
         
-        ax2.plot(x, avgVal2, 'k', color='#000000')
-        ax2.plot(x, avgVal5, 'k', color='#DC582A')
-        ax2.plot(x, avgVal8, 'k', color = '#CAF0E4')
+        ax2.plot(x, avgVal2, 'k', color=color1, linewidth = 2)
+        ax2.plot(x, avgVal5, 'k', color=color2, linewidth = 2)
+        ax2.plot(x, avgVal8, 'k', color = color3, linewidth = 2)
         ax2.set_xlabel('Time')
         ax2.set_ylabel(f"{Ylabel2}")
         ax2.fill_between(x, avgVal2-sdVal2, avgVal2+sdVal2,
-            alpha=0.5, edgecolor='#000000', facecolor='#000000')
+            alpha=0.25, edgecolor=color1, facecolor=color1)
         ax2.fill_between(x, avgVal5-sdVal5, avgVal5+sdVal5,
-            alpha=0.5, edgecolor='#DC582A', facecolor='#DC582A')
+            alpha=0.25, edgecolor=color2, facecolor=color2)
         ax2.fill_between(x, avgVal8-sdVal8, avgVal8+sdVal8,
-            alpha=0.5, edgecolor='#CAF0E4', facecolor='#CAF0E4')
+            alpha=0.25, edgecolor=color3, facecolor=color3)
 
-        ax3.plot(x, avgVal3, 'k', color='#000000', label = '{}'.format(config1))
-        ax3.plot(x, avgVal6, 'k', color='#DC582A', label = '{}'.format(config2))
-        ax3.plot(x, avgVal9, 'k', color='#CAF0E4', label = '{}'.format(config3))
+        ax3.plot(x, avgVal3, 'k', color=color1, label = '{}'.format(config1), linewidth = 2)
+        ax3.plot(x, avgVal6, 'k', color=color2, label = '{}'.format(config2), linewidth = 2)
+        ax3.plot(x, avgVal9, 'k', color=color3, label = '{}'.format(config3), linewidth = 2)
         ax3.set_xlabel('Time')
         ax3.set_ylabel(f"{Ylabel3}")
         ax3.fill_between(x, avgVal3-sdVal3, avgVal3+sdVal3,
-            alpha=0.5, edgecolor='#000000', facecolor='#000000')
+            alpha=0.25, edgecolor=color1, facecolor=color1)
         ax3.fill_between(x, avgVal6-sdVal6, avgVal6+sdVal6,
-            alpha=0.5, edgecolor='#DC582A', facecolor='#DC582A')
+            alpha=0.25, edgecolor=color2, facecolor=color2)
         ax3.fill_between(x, avgVal9-sdVal9, avgVal9+sdVal9,
-            alpha=0.5, edgecolor='#CAF0E4', facecolor='#CAF0E4')
+            alpha=0.25, edgecolor=color3, facecolor=color3)
         ax3.legend()
         plt.legend()
         plt.suptitle('{}'.format(subName))
@@ -189,6 +193,22 @@ def trimTakeoffs(landingVec, takeoffVec):
     else:
         return(takeoffVec)
 
+def normMoments(DF, subjectMass):
+    #Take the non mass-normalized moments and norm them to subject mass
+    newDat = DF
+    newDat.LAnkleMomentx = newDat.LAnkleMomentx / subjectMass
+    newDat.LAnkleMomenty = newDat.LAnkleMomenty / subjectMass
+    newDat.LAnkleMomentz= newDat.LAnkleMomentz / subjectMass
+    
+    newDat.LKneeMomentX = newDat.LKneeMomentX / subjectMass
+    newDat.LKneeMomentY = newDat.LKneeMomentY / subjectMass
+    newDat.LKneeMomentZ = newDat.LKneeMomentZ / subjectMass
+    
+    newDat.LHipMomentx = newDat.LHipMomentx / subjectMass
+    newDat.LHipMomenty = newDat.LHipMomenty / subjectMass
+    newDat.LHipMomentz = newDat.LHipMomentz / subjectMass
+    return newDat
+
 ### load file in
 fName = entries[fileToLoad] #Load one file at a time
 fName2 = entries[fileToLoad2]
@@ -206,6 +226,11 @@ dat3 = pd.read_csv(fPath+fName3,sep='\t', skiprows = 8, header = 0)
 dat.ForcesZ = dat.ForcesZ * -1
 dat2.ForcesZ = dat2.ForcesZ * -1
 dat3.ForcesZ = dat3.ForcesZ * -1
+
+dat = normMoments(dat, 70)
+dat2 = normMoments(dat2, 70)
+dat3 = normMoments(dat3, 70)
+
 
 # define a ton and unpack variables
 trimmedForce = thresholdForce(dat, fThresh)
@@ -374,30 +399,40 @@ sdDat3 = ensembleSDData(np.std(forceMatrix(trimmedForce3, trimmedLandings3, 10, 
 makeCompFig(meanDat1.Forcez, sdDat1.sdForcez, meanDat1.Forcex, sdDat1.sdForcex, meanDat1.Forcey, sdDat1.sdForcey, 
             meanDat2.Forcez, sdDat2.sdForcez, meanDat2.Forcex, sdDat2.sdForcex, meanDat2.Forcey, sdDat2.sdForcey,
             meanDat3.Forcez, sdDat3.sdForcez, meanDat3.Forcex, sdDat3.sdForcex, meanDat3.Forcey, sdDat3.sdForcey,
-            'Z Force','X Force','Y Force')
+            'Vertical Force (N)','Medial-Lateral Force (N)','Anterior-Posterior Force (N)')
 
 makeCompFig(meanDat1.AnklePower, sdDat1.sdAnklePower, meanDat1.KneePower, sdDat1.sdKneePower, meanDat1.HipPower, sdDat1.sdHipPower, 
             meanDat2.AnklePower, sdDat2.sdAnklePower, meanDat2.KneePower, sdDat2.sdKneePower, meanDat2.HipPower, sdDat2.sdHipPower,
             meanDat3.AnklePower, sdDat3.sdAnklePower, meanDat3.KneePower, sdDat3.sdKneePower, meanDat3.HipPower, sdDat3.sdHipPower,
-            'Ankle Power','Knee Power','Hip Power')
+            'Ankle Power (W/kg)','Knee Power (W/kg)','Hip Power (W/kg)')
 
 makeCompFig(meanDat1.AnkleFlex, sdDat1.sdAnkleFlex, meanDat1.KneeFlex, sdDat1.sdKneeFlex, meanDat1.HipFlex, sdDat1.sdHipFlex, 
             meanDat2.AnkleFlex, sdDat2.sdAnkleFlex, meanDat2.KneeFlex, sdDat2.sdKneeFlex, meanDat2.HipFlex, sdDat2.sdHipFlex,
             meanDat3.AnkleFlex, sdDat3.sdAnkleFlex, meanDat3.KneeFlex, sdDat3.sdKneeFlex, meanDat3.HipFlex, sdDat3.sdHipFlex,
-            'Ankle Flexion','Knee Flexion','Hip Flexion')
+            'Ankle Flexion (Degrees)','Knee Flexion (Degrees)','Hip Flexion (Degrees)')
+
+makeCompFig(meanDat1.AnkleAbd, sdDat1.sdAnkleAbd, meanDat1.KneeRot, sdDat1.sdKneeRot, meanDat1.HipAbd, sdDat1.sdHipAbd, 
+            meanDat2.AnkleAbd, sdDat2.sdAnkleAbd, meanDat2.KneeRot, sdDat2.sdKneeRot, meanDat2.HipAbd, sdDat2.sdHipAbd,
+            meanDat3.AnkleAbd, sdDat3.sdAnkleAbd, meanDat3.KneeRot, sdDat3.sdKneeRot, meanDat3.HipAbd, sdDat3.sdHipAbd,
+            'Ankle Abduction (Degrees)','Knee Internal Rotation (Degrees)','Hip Abduction (Degrees)')
+
+makeCompFig(meanDat1.AnkleInv, sdDat1.sdAnkleInv, meanDat1.KneeRot, sdDat1.sdKneeRot, meanDat1.HipInt, sdDat1.sdHipInt, 
+            meanDat2.AnkleInv, sdDat2.sdAnkleInv, meanDat2.KneeRot, sdDat2.sdKneeRot, meanDat2.HipInt, sdDat2.sdHipInt,
+            meanDat3.AnkleInv, sdDat3.sdAnkleInv, meanDat3.KneeRot, sdDat3.sdKneeRot, meanDat3.HipInt, sdDat3.sdHipAbd,
+            'Ankle Inversion (Degrees)','Knee Internal Rotation (Degrees)','Hip Internal Rotation (Degrees)')
 
 makeCompFig(meanDat1.AnkleMomX, sdDat1.sdAnkleMomX, meanDat1.AnkleMomY, sdDat1.sdAnkleMomY, meanDat1.AnkleMomZ, sdDat1.sdAnkleMomZ, 
             meanDat2.AnkleMomX, sdDat2.sdAnkleMomX, meanDat2.AnkleMomY, sdDat2.sdAnkleMomY, meanDat2.AnkleMomZ, sdDat2.sdAnkleMomZ,
             meanDat3.AnkleMomX, sdDat3.sdAnkleMomX, meanDat3.AnkleMomY, sdDat3.sdAnkleMomY, meanDat3.AnkleMomZ, sdDat3.sdAnkleMomZ,
-            'Ankle X','Ankle Y',' Ankle Z')
+            'Ankle Rotation Moment (Nm/Kg)','Ankle Plantarflexion Moment (Nm/Kg)',' Ankle Abduction Moment (Nm/Kg)')
 
 makeCompFig(meanDat1.KneeMomX, sdDat1.sdKneeMomX, meanDat1.KneeMomY, sdDat1.sdKneeMomY, meanDat1.KneeMomZ, sdDat1.sdKneeMomZ, 
             meanDat2.KneeMomX, sdDat2.sdKneeMomX, meanDat2.KneeMomY, sdDat2.sdKneeMomY, meanDat2.KneeMomZ, sdDat2.sdKneeMomZ,
             meanDat3.KneeMomX, sdDat3.sdKneeMomX, meanDat3.KneeMomY, sdDat3.sdKneeMomY, meanDat3.KneeMomZ, sdDat3.sdKneeMomZ,
-            'Knee X','Knee Y',' Knee Z')
+            'Knee Rotation Moment (Nm/Kg)','Knee Flexion Moment (Nm/Kg)',' Knee Abduction Moment (Nm/Kg)')
 
 makeCompFig(meanDat1.HipMomX, sdDat1.sdHipMomX, meanDat1.HipMomY, sdDat1.sdHipMomY, meanDat1.HipMomZ, sdDat1.sdHipMomZ, 
             meanDat2.HipMomX, sdDat2.sdHipMomX, meanDat2.HipMomY, sdDat2.sdHipMomY, meanDat2.HipMomZ, sdDat2.sdHipMomZ,
             meanDat3.HipMomX, sdDat3.sdHipMomX, meanDat3.HipMomY, sdDat3.sdHipMomY, meanDat3.HipMomZ, sdDat3.sdHipMomZ,
-            'Hip X','Hip Y',' Hip Z')
+            'Hip Rotation Moment (Nm/Kg)','Hip Abduction Moment (Nm/Kg)',' Hip Flexion Moment (Nm/Kg)')
 

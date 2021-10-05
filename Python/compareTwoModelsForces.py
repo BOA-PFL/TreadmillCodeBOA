@@ -21,9 +21,9 @@ fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\D
 entries = os.listdir(fPath)
 
 # load data in
-fName = entries[148] #Load one file at a time
-fName2 = entries[150]
-fName3 = entries[152]
+fName = entries[71] #Load one file at a time
+fName2 = entries[73]
+fName3 = entries[75]
 config1 = fName.split('_')[1]
 config2 = fName2.split('_')[1]
 config3 = fName3.split('_')[1]
@@ -240,41 +240,39 @@ plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(20,11))
-ax1.plot(x, avgF, 'k', color='#000000', label = '{}'.format(config1))
-ax1.plot(x, avgF2, 'k', color='#DC582A', label = '{}'.format(config2))
-ax1.plot(x, avgF3, 'k', color='#CAF0E4', label = '{}'.format(config3))
-ax1.set_xlabel('Time')
+ax1.plot(x, avgF, 'k', color='#ff0000', label = '{}'.format(config1), linewidth = 2)
+ax1.plot(x, avgF2, 'k', color='#FFFF00', label = '{}'.format(config2), linewidth = 2)
+ax1.plot(x, avgF3, 'k', color='#0000FF', label = '{}'.format(config3), linewidth = 2)
+ax1.set_xlabel('Time (ms)')
 ax1.set_ylabel('Force (N)')
 ax1.set_title('Average Vertical Force')
 ax1.fill_between(x, avgF-sdF, avgF+sdF,
-    alpha=0.5, edgecolor='#000000', facecolor='#000000')
+    alpha=0.25, edgecolor='#ff0000', facecolor='#ff0000')
 ax1.fill_between(x, avgF2-sdF2, avgF2+sdF2,
-   alpha=0.5, edgecolor='#DC582A', facecolor='#DC582A')
+   alpha=0.25, edgecolor='#FFFF00', facecolor='#FFFF00')
 ax1.fill_between(x, avgF3-sdF3, avgF2+sdF2,
-   alpha=0.5, edgecolor='#CAF0E4', facecolor='#CAF0E4')
-ax2.plot(x, avgFX, 'k', color='#000000', label = '{}'.format(config1))
-ax2.plot(x, avgFX2, 'k', color='#DC582A', label = '{}'.format(config2))
-ax2.plot(x, avgFX3, 'k', color='#CAF0E4', label = '{}'.format(config3))
-ax2.set_xlabel('Time')
-ax2.set_ylabel('Force (N)')
-ax2.set_title('Average M-L Force')
-ax2.fill_between(x, avgFX2-sdFX, avgFX+sdFX,
-    alpha=0.5, edgecolor='#000000', facecolor='#000000')
+   alpha=0.25, edgecolor='#0000FF', facecolor='#0000FF')
+ax2.plot(x, avgFX, 'k', color='#ff0000', label = '{}'.format(config1), linewidth = 2)
+ax2.plot(x, avgFX2, 'k', color='#FFFF00', label = '{}'.format(config2), linewidth = 2)
+ax2.plot(x, avgFX3, 'k', color='#0000FF', label = '{}'.format(config3), linewidth = 2)
+ax2.set_xlabel('Time (ms)')
+ax2.set_title('Average Medial - Lateral Force')
+ax2.fill_between(x, avgFX-sdFX, avgFX+sdFX,
+    alpha=0.25, edgecolor='#ff0000', facecolor='#ff0000')
 ax2.fill_between(x, avgFX2-sdFX2, avgFX2+sdFX2,
-    alpha=0.5, edgecolor='#DC582A', facecolor='#DC582A')
+    alpha=0.25, edgecolor='#FFFF00', facecolor='#FFFF00')
 ax2.fill_between(x, avgFX3-sdFX3, avgFX3+sdFX3,
-    alpha=0.5, edgecolor='#CAF0E4', facecolor='#CAF0E4')
+    alpha=0.25, edgecolor='#0000FF', facecolor='#0000FF')
 ax2.legend(loc = 'upper right')
-ax3.plot(x, avgFY, 'k', color='#000000', label = '{}'.format(config1))
-ax3.plot(x, avgFY2, 'k', color='#DC582A', label = '{}'.format(config2))
-ax3.plot(x, avgFY3, 'k', color='#CAF0E4', label = '{}'.format(config3))
-ax3.set_xlabel('Time')
-ax3.set_ylabel('Force (N)')
-ax3.set_title('Average A-P Force')
+ax3.plot(x, avgFY, 'k', color='#ff0000', label = '{}'.format(config1), linewidth = 2)
+ax3.plot(x, avgFY2, 'k', color='#FFFF00', label = '{}'.format(config2), linewidth = 2)
+ax3.plot(x, avgFY3, 'k', color='#0000FF', label = '{}'.format(config3), linewidth = 2)
+ax3.set_xlabel('Time (ms)')
+ax3.set_title('Average Anterior - Posterior Force')
 ax3.fill_between(x, avgFY-sdFY, avgFY+sdFY,
-    alpha=0.5, edgecolor='#000000', facecolor='#000000')
+    alpha=0.25, edgecolor='#ff0000', facecolor='#ff0000')
 ax3.fill_between(x, avgFY2-sdFY2, avgFY2+sdFY2,
-    alpha=0.5, edgecolor='#DC582A', facecolor='#DC582A')
+    alpha=0.25, edgecolor='#FFFF00', facecolor='#FFFF00')
 ax3.fill_between(x, avgFY3-sdFY3, avgFY3+sdFY3,
-    alpha=0.5, edgecolor='#CAF0E4', facecolor='#CAF0E4')
+    alpha=0.25, edgecolor='#0000FF', facecolor='#0000FF')
 plt.tight_layout()
