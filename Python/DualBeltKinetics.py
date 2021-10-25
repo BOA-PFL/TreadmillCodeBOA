@@ -220,6 +220,9 @@ NL = []
 PkMed = []
 PkLat = []
 
+kneeXROM = []
+kneeZROM = []
+
 # start for loop
 for fName in entries:
     try:
@@ -270,6 +273,10 @@ for fName in entries:
             HipInt = forceDat.LHipInt
         except:
             HipInt = forceDat.LHipRot
+            
+        KneeXAng = forceDat.LKneeXAngle #X is Transverse
+        KneeYAng = forceDat.LKneeYAngle #Y is saggital
+        KneeZAng = forceDat.LKneeZAngle #Z is Frontal
         
         AnkleMomX = forceDat.LAnkleMomentx
         AnkleMomY = forceDat.LAnkleMomenty
@@ -314,6 +321,8 @@ for fName in entries:
                 ankleNegWork.append( sum(i for i in AnklePower[landing:trimmedTakesoffs[countVar]] if i < 0) )
                 anklePosWork.append( sum(i for i in AnklePower[landing:trimmedTakesoffs[countVar]] if i > 0) )
                 
+                kneeXROM.append( np.max(KneeXAng[landing:trimmedTakesoffs[countVar]]) - np.min(KneeXAng[landing:trimmedTakesoffs[countVar]]) )
+                kneeZROM.append( np.max(KneeZAng[landing:trimmedTakesoffs[countVar]]) - np.min(KneeZAng[landing:trimmedTakesoffs[countVar]]) )
                 
                 pkKneePw.append( np.max( KneePower[landing:trimmedTakesoffs[countVar]]) )
                 kneeNetWork.append( np.sum( KneePower[landing:trimmedTakesoffs[countVar]]) )
@@ -385,9 +394,10 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'AnkleAbdROM':list(ankleAbdROM), 'AnkleInvROM':list(ankleInvROM), 'AnkleFlexROM':list(ankleFlexROM),
                          'minHipMomZ':list(minHipMomZ), 'minHipMomY':list(minHipMomY), 'minKneeMomZ':list(minKneeMomZ), 'MinKneeMomY':list(minKneeMomY),
                          'minAnkleMomZ':list(minAnkleMomZ), 'hipFlexROM':list(hipFlexROM), 'kneeRotROM':list(kneeRotROM), 'kneeFlexROM':list(kneeFlexROM),
-                         'pkHipMomX':list(pkHipMomX),  'pkHipMomY':list(pkHipMomY), 'pkHipMomZ':list(pkHipMomZ)})
+                         'pkHipMomX':list(pkHipMomX),  'pkHipMomY':list(pkHipMomY), 'pkHipMomZ':list(pkHipMomZ), 'kneeXROM':list(kneeXROM),
+                         'kneeZROM':list(kneeZROM)})
 
-outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKineticsROM.csv')#, mode ='a',header = False)
+outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKineticsROM2.csv')#, mode ='a',header = False)
 #outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\KineticsKinematics\\TM\\KinKinematics.csv')#, mode ='a',header = False)
 
 

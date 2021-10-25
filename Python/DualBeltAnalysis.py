@@ -261,8 +261,8 @@ for loop, file in enumerate(entries):
                 except:
                     CT.append(0)
                 try:
-                    brakeImpulse.append( sum(i for i in brakeFilt[landing:landing+200]if i < 0) ) #sum all negative brake force vals
-                    propImpulse.append( sum(i for i in brakeFilt[landing:landing+200]if i > 0) ) #sum all positive values
+                    brakeImpulse.append( sum(i for i in brakeFilt[landing:landing[countVar]]if i < 0) ) #sum all negative brake force vals
+                    propImpulse.append( sum(i for i in brakeFilt[landing:landing:landing[countVar]]if i > 0) ) #sum all positive values
                 except:
                     brakeImpulse.append(0)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
@@ -275,7 +275,7 @@ for loop, file in enumerate(entries):
                 except:
                     meanForce.append(0)
                 try:
-                    pkForce.append( np.max(forceZ[landing:landing+200]) )
+                    pkForce.append( np.max(forceZ[landing:landing:landing[countVar]]) )
                 except:
                     pkForce.append(0)
                 try:
