@@ -312,6 +312,12 @@ for fName in entries:
             trimmedLandings = landings
             trimemdTakesoffs = takeoffs
         
+        # if dat.COP_X[landings[0]] < dat.COP_X[landings[1]]:
+        #     trimmedLandings = landings[0:-1:2]
+        #     trimmedTakesoffs = takeoffs[0:-1:2]
+        # else:
+        #     trimmedLandings = landings[1:-1:2]
+        #     trimmedTakesoffs = takeoffs[1:-1:2]
                 
         for countVar, landing in enumerate(trimmedLandings):
             try:
