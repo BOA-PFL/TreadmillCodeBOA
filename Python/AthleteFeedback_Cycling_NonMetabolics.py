@@ -26,8 +26,9 @@ meter = 0 ### Specify which power meter you used. WattBike == 0, Garmin == 1
 #### Wattbike data
 
 print('Open all wattbike/power files recorded for the subject')
-filename = askopenfilenames()
+filenames = askopenfilenames()
 
+# Initiate storing variables
 steadyPower = []
 steadyCadence = []
 steadySym = []
@@ -36,19 +37,16 @@ sprintPower = []
 sprintCadence = []
 sprintSym = []
 
-for i in range(len(filename)):
+# Index through the files selected
+for entry in filenames:
     
-    file = filename[i]
-    dat = pd.read_csv(file)
+    dat = pd.read_csv(entry)
     
-    '''
-    This is for renaming columns that come from the Watt Bike Monitor. You may also need
-    to adjust this for units in the names as well
-    '''
+    # Just in case the headers for the dataframe need to be replaced
     # dat = dat.rename(columns={'Cadence ':'Cadence', 'Speed ':'Speed',
     #    'Distance ':'Distance','Force ':'Force','Power ': 'Power'})
 
-   
+    # Create time-continuous power figure to select regions of interest
     plt.figure()
     plt.plot(dat.power)
     
@@ -59,6 +57,7 @@ for i in range(len(filename)):
     sprintStart = plt.ginput(-1) 
     plt.close
     
+    # Index through the steady-state regions and extract metrics of interest
     for k in range(len(steadyStart)):
         
         (ss, y) = steadyStart[k]
@@ -69,19 +68,20 @@ for i in range(len(filename)):
         if meter == 0:
             steadySym.append(np.mean(dat.balance[ss:ss + 300]))
     
-    
+    # Index through the steady-state regions and extract metrics of interest
     for j in range(len(sprintStart)):
         
         (sps, y) = sprintStart[0]
         sps = round(sps)
         for p in range(0,11):
-            
+            # Moving average for sprinting values to account for noise
             sprintPower.append(np.mean(dat.power[sps + p: sps + p + 5]))
             sprintCadence.append(np.mean(dat.cadence[sps + p:sps + p + 5]))
             
             if meter == 0:
                 sprintSym.append(np.mean(dat.balance[sps + p:sps + p + 5]))
             
+# Store sprinting metrics of interest
 sprintMax = max(sprintPower)
 Max_idx = sprintPower.index(sprintMax)
 cadenceMax = sprintCadence[Max_idx]
@@ -91,7 +91,7 @@ if meter == 0:
 
 Power_steady = np.mean(steadyPower)
 
-
+# Combine all data into a dataframe to be copied into an athlete report
 if meter == 0:
     data = pd.DataFrame({'Power_steady':np.mean(steadyPower), 'Cadence_steady': np.mean(steadyCadence), 
                            'Symmetry_steady': np.mean(steadySym), 'Power_sprint':sprintMax, 
@@ -102,12 +102,7 @@ if meter == 1:
     data = pd.DataFrame({'Power_steady':np.mean(steadyPower), 'Cadence_steady': np.mean(steadyCadence), 
                            'Power_sprint':sprintMax, 
                            'Cadence_sprint':cadenceMax}, index = [0])
-    
-    
-    
-# outFileName = filenameNoExt + '_SubjectData.csv'
 
-# data.to_csv(outFileName, index = False)
 
 print('Copy info from *data* DataFrame into athlete feedback form')
 

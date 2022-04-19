@@ -26,6 +26,7 @@ entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 #### Wattbike data
 
 print('Open all wattbike/power files recorded for the subject')
+# Initiate storing variables
 config = []
 subName = []
 steadyPower = []
@@ -37,17 +38,10 @@ cadenceMax = []
 sprintSym = []
 
 
-
+# Index through the files selected
 for fName in entries:
-    try:
-
-     
-     #for i in range(len(entries)):
-    
-      #fName = entries[i]
-    
-      config1 = fName.split('_')[1]
-        
+    # If the loop is not able accomplished, "try" will skip the file
+    try:   
         
       dat = pd.read_csv(fPath+fName, header = 0)
     # This is for renaming columns that come from the Watt Bike Monitor. You may also need
@@ -56,7 +50,7 @@ for fName in entries:
     # dat = dat.rename(columns={'Cadence ':'Cadence', 'Speed ':'Speed',
     #    'Distance ':'Distance','Force ':'Force','Power ': 'Power'})
 
-   
+      # Create time-continuous power figure to select regions of interest
       plt.figure()
       plt.plot(dat.power)
     
@@ -66,7 +60,8 @@ for fName in entries:
       print('click the start of as many sprints are recorded in the file. Press enter when done')
       sprintStart = plt.ginput(-1) 
       plt.close
-    
+      
+      # Index through the steady-state regions and extract metrics of interest
       for k in range(len(steadyStart)):
         
         (ss, y) = steadyStart[k]
@@ -77,7 +72,7 @@ for fName in entries:
         if meter == 0:
             steadySym.append(np.mean(dat.balance[ss:ss + 300]))
     
-    
+      # Index through the steady-state regions and extract metrics of interest
       for j in range(len(sprintStart)):
         sprintPower = [] 
         sprintCadence = []
@@ -85,7 +80,6 @@ for fName in entries:
         (sps, y) = sprintStart[0]
         sps = round(sps)
         for p in range(0,11):
-            
             # Create a moving average
             sprintPower.append(np.mean(dat.power[sps + p: sps + p + 5]))
             sprintCadence.append(np.mean(dat.cadence[sps + p:sps + p + 5]))
@@ -101,13 +95,8 @@ for fName in entries:
         # if meter == 0:
         #  symmetryMax = sprintSym[Max_idx]
 
-        
-        # powerSprint = np.max(sprintPower) 
-        # cadenceMax = np.max(sprintCadence) 
-        
-        #Power_steady = np.mean(steadyPower) 
       subName.append(fName.split('_')[0])
-      config.append( config1 )
+      config.append(fName.split('_')[1])
 
     
     except:
@@ -115,7 +104,7 @@ for fName in entries:
 
 
 
-    
+# Combine outcomes and export to csv
 outcomes = pd.DataFrame({'Subject':list(subName), 'Config': list(config),'Power_steady':steadyPower, 'Cadence_steady': steadyCadence, 
                             'Power_sprint':sprintMax, 'Cadence_sprint':cadenceMax})  
 
