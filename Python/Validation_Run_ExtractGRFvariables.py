@@ -19,19 +19,17 @@ import scipy.signal as sig
 
 
 # Define constants and options
-run = 1 # Set this to 1 where participant is running on one belt so only the left are detected. 0 for dual belt
+run = 0 # Set this to 1 where participant is running on one belt so only the left are detected. 0 for dual belt
 manualTrim = 0  #set this to 1 if you want to manually trim trials with ginput, 0 if you want it auto trimmed (start and end of trial)
 fThresh = 50 #below this value will be set to 0.
 writeData = 0 #will write to spreadsheet if 1 entered
-plottingEnabled = 0 #plots the bottom if 1. No plots if 0
+plottingEnabled = 1 #plots the bottom if 1. No plots if 0
 lookFwd = 50
-timeToLoad = 75 #length to look forward for an impact peak
+timeToLoad = 150 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 bigData = 0
 # Read in balance file
-#fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Hike Work Research\\Work Pilot 2021\\WalkForces\\'
-#fPath = 'C:\\Users\\daniel.feeney\\Dropbox (Boa)\\EndurancePerformance\\Altra_MontBlanc_June2021\\TreadmillData\\'
-fPath = 'C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces\\'
+fPath = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\\Forces\\'
 entries = os.listdir(fPath)
 
 if bigData == 1:
@@ -41,13 +39,18 @@ if bigData == 1:
     Year = '2021'
     Month = 'June'
     ##
+#______________________________________________________________________________
 # list of functions 
 # finding landings on the force plate once the filtered force exceeds the force threshold
+
 def findLandings(force):
     lic = []
     for step in range(len(force)-1):
         if force[step] == 0 and force[step + 1] >= fThresh:
             lic.append(step)
+            
+    if lic[0] == 0:
+        lic = lic[1:]
     return lic
 
 #Find takeoff from FP when force goes from above thresh to 0
@@ -56,16 +59,17 @@ def findTakeoffs(force):
     for step in range(len(force)-1):
         if force[step] >= fThresh and force[step + 1] == 0:
             lto.append(step + 1)
+    lto = lto[1:]
     return lto
 
 
-def calcVLR(force, startVal, lengthFwd, endLoading):
+def calcVLR(force, startVal, lengthFwd, endLoading, sampFrq):
     # function to calculate VLR from 80 and 20% of the max value observed in the first n
     # indices (n defined by lengthFwd). 
     # endLoading should be set to where an impact peak should have occured if there is one
     # and can be biased longer so the for loop doesn't error out
     # lengthFwd is how far forward to look to calculate VLR
-    tmpDiff = np.diff(force[startVal:startVal+500])
+    tmpDiff = np.diff(force[startVal:startVal+500])*sampFrq
     
     if next(x for x, val in enumerate( tmpDiff ) 
                       if val < 0) < endLoading:
@@ -79,7 +83,7 @@ def calcVLR(force, startVal, lengthFwd, endLoading):
                       if val > eightyPctMax) 
         twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
                       if val > twentyPctMax) 
-        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
+        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/sampFrq) - (twentyIndex/sampFrq)))
     
     else:
         maxF = np.max(force[startVal:startVal+endLoading])
@@ -90,7 +94,7 @@ def calcVLR(force, startVal, lengthFwd, endLoading):
                           if val > eightyPctMax) 
         twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+endLoading]) 
                           if val > twentyPctMax) 
-        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
+        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/sampFrq) - (twentyIndex/sampFrq)))
         
     return(VLR)
     
@@ -160,12 +164,12 @@ def forceMatrix(inputForce, landings, noSteps, stepLength):
             print(landing)
             
     return preForce
-
+#______________________________________________________________________________
 #Preallocation
 loadingRate = []
 peakBrakeF = []
 brakeImpulse = []
-VLR = []
+VALRs = []
 VLRtwo = []
 pkForce = []
 sName = []
@@ -174,7 +178,7 @@ timeP = []
 NL = []
 PkMed = []
 PkLat = []
-CT = []
+CTs = []
 meanForce = []
 propImpulse = []
 shoes = []
@@ -196,11 +200,16 @@ for loop, file in enumerate(entries):
         
         #Parse file name into subject and configuration 
         subName = fName.split(sep = "_")[0]
-        config = fName.split(sep = "_")[1]
+        config = fName.split(sep = "_")[2]
         if bigData == 1:
             config = fName.split(sep = "_")[2].split(' - ')[0]
-
-        dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
+        
+        # Extract data frequency
+        freq = pd.read_csv(fPath+fName,sep='\t',usecols=[0], nrows=1, skiprows=[0,1], header = 0)
+        freq = freq.values.tolist()
+        freq = freq[0][0]
+            
+        dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
         dat = dat.fillna(0)
         dat.LForceZ = -1 * dat.LForceZ
         
@@ -210,10 +219,16 @@ for loop, file in enumerate(entries):
             forceDat = delimitTrial(dat)
         else: 
             forceDat = dat
+        
+        if subName == 'RosaLoveszy':
+            MForce = forceDat.LForceY*-1
+            brakeFilt = forceDat.LForceX * -1 
+        else:
+            MForce = forceDat.LForceX
+            brakeFilt = forceDat.LForceY * -1        
             
         forceZ = trimForce(forceDat, fThresh)
-        MForce = forceDat.LForceX
-        brakeFilt = forceDat.LForceY * -1
+        
                 
         #find the landings and takeoffs of the FP as vectors
         landings = findLandings(forceZ)
@@ -230,8 +245,11 @@ for loop, file in enumerate(entries):
                 trimmedLandings = [i for a, i in enumerate(landings) if  a%2 != 0]
                 trimmedTakeoffs = [i for a, i in enumerate(takeoffs) if  a%2 != 0]
         else:
-            trimmedLandings = landings
-            trimmedTakesoffs = takeoffs
+            trimmedTakeoffs = takeoffs
+            if landings[-1] > trimmedTakeoffs[-1]:
+                trimmedLandings = landings[0:-2]
+            else:
+                trimmedLandings = landings
         
         ## check to make sure brake force is applied in the correct direction ##
         if np.mean(brakeFilt[landings[1]:landings[1]+100]) > 0:
@@ -254,17 +272,18 @@ for loop, file in enumerate(entries):
         for countVar, landing in enumerate(trimmedLandings):
             try:
                # Define where next zero is
-                VLR.append(calcVLR(forceZ, landing, 150, timeToLoad))
-                VLRtwo.append( (np.max( np.diff(forceZ[landing+5:landing+50]) )/(1/1000) ) )
+                VALRs.append(calcVLR(forceZ, landing+1, 150, timeToLoad, freq))
+                VLRtwo.append( (np.max( np.diff(forceZ[landing+5:landing+150]) )/(1/freq) ) )
                 try:
-                    CT.append(trimmedTakeoffs[countVar] - landing)
+                    CTs.append(trimmedTakeoffs[countVar] - landing)
                 except:
-                    CT.append(0)
+                    CTs.append(0)
                 try:
-                    brakeImpulse.append( sum(i for i in brakeFilt[landing:landing[countVar]]if i < 0) ) #sum all negative brake force vals
-                    propImpulse.append( sum(i for i in brakeFilt[landing:landing:landing[countVar]]if i > 0) ) #sum all positive values
+                    brakeImpulse.append( sum(i for i in brakeFilt[landing:trimmedTakeoffs[countVar]] if i < 0)/freq ) #sum all negative brake force vals
+                    propImpulse.append( sum(i for i in brakeFilt[landing:trimmedTakeoffs[countVar]] if i > 0)/freq ) #sum all positive values
                 except:
                     brakeImpulse.append(0)
+                    propImpulse.append(0)
                 #stepLen.append(findStepLen(forceZ[landing:landing+800],800))
                 sName.append(subName)
                 tmpConfig.append(config)
@@ -275,7 +294,7 @@ for loop, file in enumerate(entries):
                 except:
                     meanForce.append(0)
                 try:
-                    pkForce.append( np.max(forceZ[landing:landing:landing[countVar]]) )
+                    pkForce.append( np.max(forceZ[landing:trimmedTakeoffs[countVar]]) )
                 except:
                     pkForce.append(0)
                 try:
@@ -304,17 +323,17 @@ for loop, file in enumerate(entries):
             print(file)
 
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'pBF': list(peakBrakeF),
-                         'brakeImpulse': list(brakeImpulse), 'VALR': list(VLR), 'VILR':list(VLRtwo),'pMF':list(PkMed),
-                         'pLF':list(PkLat), 'CT':list(CT),'pVGRF':list(pkForce), 'meanForce':list(meanForce),
+                         'brakeImpulse': list(brakeImpulse), 'VALR': list(VALRs), 'VILR':list(VLRtwo),'pMF':list(PkMed),
+                         'pLF':list(PkLat), 'CT':list(CTs),'pVGRF':list(pkForce), 'meanForce':list(meanForce),
                          'PropImp':list(propImpulse)})
 
-outcomes.to_csv("C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\Forces2.csv",mode='a',header=False)
+outcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\\Forces\\Forces2.csv",mode='a',header=True)
 
 if bigData == 1:
     outcomes = pd.DataFrame({'Subject':list(sName), 'ShoeCondition':list(shoeCondition),'Config': list(tmpConfig),
                              'Segment':list(segment), 'Shoe':list(shoes), 'Brand':list(brands),'year':list(years),
-                             'month':list(months), 'VALR': list(VLR), 'VILR':list(VLRtwo),'pBF': list(peakBrakeF),
-                         'pMF':list(PkMed),'pLF':list(PkLat), 'CT':list(CT)})
+                             'month':list(months), 'VALR': list(VALRs), 'VILR':list(VLRtwo),'pBF': list(peakBrakeF),
+                         'pMF':list(PkMed),'pLF':list(PkLat), 'CT':list(CTs)})
     
     outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\BigData2021\\BigDataRun.csv',mode='a',header=False)
 # not currently working. Need to make this a 2 way Anova (subject and config). Getting close

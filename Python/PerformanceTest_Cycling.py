@@ -10,15 +10,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+# Note on plotting
+# If plotting results in an error use the command:
+# %matplotlib qt
+# You can also change the preferences in Spyder (Tools>Preferences>IPython console
+# Select "Graphics" tab, and for "Graphics backen" select "Automatic")
+
 meter = 0 ### Specify which power meter you used. WattBike == 0, Garmin == 1
 
-fPath = 'C:/Users/bethany.kilpatrick/Boa Technology Inc/PFL - General/Cycling2021/DH_Cycling_Nov2021/WattBike/'
+# Ensure that the file path contains YOUR NAME (e.g. bethany.kilpatrick)
+fPath = 'C:/Users/eric.honert/Boa Technology Inc/PFL Team - General/Cycling Performance Tests/Cycling_4guideSD_Feb2022/Wattbike Data/'
 fileExt = r".csv"
 entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 
 #### Wattbike data
 
-print('Open all wattbike/power files recorded for teh subject')
+print('Open all wattbike/power files recorded for the subject')
 config = []
 subName = []
 steadyPower = []
@@ -79,12 +86,14 @@ for fName in entries:
         sps = round(sps)
         for p in range(0,11):
             
+            # Create a moving average
             sprintPower.append(np.mean(dat.power[sps + p: sps + p + 5]))
             sprintCadence.append(np.mean(dat.cadence[sps + p:sps + p + 5]))
             
             if meter == 0:
                 sprintSym.append(np.mean(dat.balance[sps + p:sps + p + 5]))
-            
+        
+        # Find the maximum from the moving averaged sprint data
         sprintMax.append(max(sprintPower))
         Max_idx = sprintPower.index(sprintMax[-1])
         cadenceMax.append(sprintCadence[Max_idx])
