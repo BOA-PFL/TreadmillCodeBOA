@@ -25,7 +25,7 @@ meter = 0 ### Specify which power meter you used. WattBike == 0, Garmin == 1
 
 #### Wattbike data
 
-print('Open all wattbike/power files recorded for teh subject')
+print('Open all wattbike/power files recorded for the subject')
 filename = askopenfilenames()
 
 steadyPower = []
