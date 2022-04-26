@@ -30,19 +30,22 @@ dat = dat[2:-1]
 info = pd.read_excel(filename, sheet_name = 'Data', usecols = 'B:B')
 wt = info['Unnamed: 1'].values[5]
 
+# Compute the energy expendature from the oxygen and carbon dioxide measures
 ee = (dat.VO2*16.58/60 + dat.VCO2*4.15/60)*0.85984522785899
 
+# Create time-continuous energy expendature figure to select regions of interest
 plt.figure()
 plt.plot(ee)
 steadyStart = plt.ginput(6)
 plt.close
 
 trialNo = list(range(1,7))
+# Initiate storing variables
 vo2mean = []
-
 hrmean = []
 eemean = []
 
+# Index through the steady state selections
 for i in range(len(steadyStart)):
     
 
@@ -54,15 +57,13 @@ for i in range(len(steadyStart)):
     hrmean.append(np.mean(dat.HR[ss:se]))
     eemean.append(np.mean(ee[ss:se]))
     
-    
-
-
 
 #### Wattbike data
 
-print('Open all wattbike/power files recorded for teh subject')
-filename = askopenfilenames()
+print('Open all wattbike/power files recorded for the subject')
+filenames = askopenfilenames()
 
+# Initiate storing variables
 steadyPower = []
 steadyCadence = []
 steadySym = []
@@ -71,12 +72,12 @@ sprintPower = []
 sprintCadence = []
 sprintSym = []
 
-for i in range(len(filename)):
+# Index through the files selected
+for entry in filenames:
     
-    file = filename[i]
-    dat = pd.read_csv(file)
+    dat = pd.read_csv(entry)
     
-   
+    # Create time-continuous power figure to select regions of interest
     plt.figure()
     plt.plot(dat.power)
     
@@ -87,6 +88,7 @@ for i in range(len(filename)):
     sprintStart = plt.ginput(-1) 
     plt.close
     
+    # Index through the steady-state regions and extract metrics of interest
     for k in range(len(steadyStart)):
         
         (ss, y) = steadyStart[k]
@@ -97,19 +99,20 @@ for i in range(len(filename)):
         if meter == 0:
             steadySym.append(np.mean(dat.balance[ss:ss + 300]))
     
-    
+    # Index through the steady-state regions and extract metrics of interest
     for j in range(len(sprintStart)):
         
         (sps, y) = sprintStart[0]
         sps = round(sps)
         for p in range(0,11):
-            
+            # Moving average for sprinting values to account for noise
             sprintPower.append(np.mean(dat.power[sps + p: sps + p + 5]))
             sprintCadence.append(np.mean(dat.cadence[sps + p:sps + p + 5]))
             
             if meter == 0:
                 sprintSym.append(np.mean(dat.balance[sps + p:sps + p + 5]))
-            
+
+# Store sprinting metrics of interest            
 sprintMax = max(sprintPower)
 Max_idx = sprintPower.index(sprintMax)
 cadenceMax = sprintCadence[Max_idx]
