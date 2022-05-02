@@ -21,16 +21,44 @@ fPath = 'C:/Users/Daniel.Feeney/Dropbox (Boa)/EnduranceProtocolWork/TibiaForceDa
 entries = os.listdir(fPath)
 
 # list of functions 
-# finding landings on the force plate once the filtered force exceeds the force threshold
 def findLandings(force):
+    """
+    The purpose of this function is to determine the landings (foot contacts)
+    events on the force plate when the filtered vertical ground reaction force
+    exceeds the force threshold
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force. 
+
+    Returns
+    -------
+    lic : list
+        indices of the landings (foot contacts)
+
+    """
     lic = []
     for step in range(len(force)-1):
         if force[step] == 0 and force[step + 1] >= fThresh:
             lic.append(step)
     return lic
 
-#Find takeoff from FP when force goes from above thresh to 0
 def findTakeoffs(force):
+    """
+    Find takeoff from FP when force goes from above thresh to 0
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force
+
+    Returns
+    -------
+    lto : list
+        indices of the take-offs
+
+    """
     lto = []
     for step in range(len(force)-1):
         if force[step] >= fThresh and force[step + 1] == 0:
@@ -62,14 +90,15 @@ for file in entries:
         ankleForce = dat.LeftAnkleForce * -1
         ankleForce[ankleForce<fThresh] = 0
 
+        # Compute Tibia Force and Plantar Flexion Force assuming the Achilles
+        # Tendon moment arm is 5 cm
         dat['TibialForce'] = ankleForce + (dat.LAnkleMomenty / 0.05)
         dat['PFForce'] = (dat.LAnkleMomenty / 0.05)
         #find the landings and offs of the FP as vectors
         landings = findLandings(ankleForce)
         takeoffs = findTakeoffs(ankleForce)
 
-        #For each landing, calculate rolling averages and time to stabilize
-    
+        #For each landing, calculate rolling averages
         for landing in landings:
             try:
                # Define where next zero is
@@ -88,7 +117,7 @@ for file in entries:
     except:
             print(file)
             
-
+# Place outcomes in a single variable
 outcomes = pd.DataFrame({'Sub':list(sName), 'Config': list(tmpConfig), 'TimePoint':list(timeP),
                          'PkTibForce':list(tibForcePk), 'TibImpulse':list(tibImpulse)})
 cleanedOutcomes = outcomes[outcomes['PkTibForce'] >= 2900]

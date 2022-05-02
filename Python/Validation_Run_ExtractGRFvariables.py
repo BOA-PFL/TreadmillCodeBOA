@@ -29,7 +29,7 @@ timeToLoad = 150 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 bigData = 0
 # Read in balance file
-fPath = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\\Forces\\'
+fPath = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\\Forces\\'
 entries = os.listdir(fPath)
 
 if bigData == 1:
@@ -41,9 +41,24 @@ if bigData == 1:
     ##
 #______________________________________________________________________________
 # list of functions 
-# finding landings on the force plate once the filtered force exceeds the force threshold
 
 def findLandings(force):
+    """
+    The purpose of this function is to determine the landings (foot contacts)
+    events on the force plate when the filtered vertical ground reaction force
+    exceeds the force threshold
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force. 
+
+    Returns
+    -------
+    lic : list
+        indices of the landings (foot contacts)
+
+    """
     lic = []
     for step in range(len(force)-1):
         if force[step] == 0 and force[step + 1] >= fThresh:
@@ -53,8 +68,21 @@ def findLandings(force):
         lic = lic[1:]
     return lic
 
-#Find takeoff from FP when force goes from above thresh to 0
 def findTakeoffs(force):
+    """
+    Find takeoff from FP when force goes from above thresh to 0
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force
+
+    Returns
+    -------
+    lto : list
+        indices of the take-offs
+
+    """
     lto = []
     for step in range(len(force)-1):
         if force[step] >= fThresh and force[step + 1] == 0:
@@ -64,13 +92,35 @@ def findTakeoffs(force):
 
 
 def calcVLR(force, startVal, lengthFwd, endLoading, sampFrq):
-    # function to calculate VLR from 80 and 20% of the max value observed in the first n
-    # indices (n defined by lengthFwd). 
-    # endLoading should be set to where an impact peak should have occured if there is one
-    # and can be biased longer so the for loop doesn't error out
-    # lengthFwd is how far forward to look to calculate VLR
+    """
+    Function to calculate VLR from 80 and 20% of the max value observed in the 
+    first n indices (n defined by lengthFwd).
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force
+    startVal : int
+        The value to start computing the loading rate from. Typically the first
+        index after the landing (foot contact) detection
+    lengthFwd : int
+        Number of indices to examine forward to compute the loading rate
+    endLoading : int
+        set to where an impact peak should have occured if there is one and can 
+        be biased longer so the for loop doesn't error out
+    sampFrq : int
+        sample frequency
+
+    Returns
+    -------
+    VLR
+        vertical loading rate
+
+    """
+    
     tmpDiff = np.diff(force[startVal:startVal+500])*sampFrq
     
+    # If there is an impact peak, utilize it to compute the loading rate
     if next(x for x, val in enumerate( tmpDiff ) 
                       if val < 0) < endLoading:
         maxFindex = next(x for x, val in enumerate( tmpDiff ) 
@@ -85,6 +135,7 @@ def calcVLR(force, startVal, lengthFwd, endLoading, sampFrq):
                       if val > twentyPctMax) 
         VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/sampFrq) - (twentyIndex/sampFrq)))
     
+    # If there is no impact peak, utilize the endLoading to compute the loading rate
     else:
         maxF = np.max(force[startVal:startVal+endLoading])
         eightyPctMax = 0.8 * maxF
@@ -98,13 +149,48 @@ def calcVLR(force, startVal, lengthFwd, endLoading, sampFrq):
         
     return(VLR)
     
-#Find max braking force moving forward
 def calcPeakBrake(force, landing, length):
+    """
+    Compute the maximum breaking (A/P) force during locomotion.
+
+    Parameters
+    ----------
+    force : list
+        A/P ground reaction force
+    landing : int
+        the landing (foot contact) of the step/stride of interest
+    length : int
+        number of indices to look forward for computing the maximum breaking
+        force
+
+    Returns
+    -------
+    minimum of the force (in a function): list
+
+    """
     newForce = np.array(force)
     return min(newForce[landing:landing+length])
 
 def findNextZero(force, length):
-    # Starting at a landing, look forward (after first 15 indices)
+    """
+    Find the zero-crossing in the A/P ground reaction force that indicates the 
+    transition from breaking to propulsion
+
+    Parameters
+    ----------
+    force : list
+        A/P ground reaction force that is already segmented from initial
+        contact to take-off
+    length : int
+        number of indices to look forward for the zero-crossing
+
+    Returns
+    -------
+    step : int
+        number of indicies that the zero crossing occurs
+
+    """
+    # Starting at a landing, look forward (after first 45 indices)
     # to the find the next time the signal goes from - to +
     for step in range(length):
         if force[step] <= 0 and force[step + 1] >= 0 and step > 45:
@@ -112,7 +198,21 @@ def findNextZero(force, length):
     return step
 
 def delimitTrial(inputDF):
-    # generic function to plot and start/end trial #
+    """
+    Function to crop the data
+
+    Parameters
+    ----------
+    inputDF : dataframe
+        Original dataframe
+
+    Returns
+    -------
+    outputDat: dataframe
+        Dataframe that has been cropped based on selection
+
+    """
+    print('Select 2 points: the start and end of the trial')
     fig, ax = plt.subplots()
     ax.plot(inputDF.LForceZ, label = 'Left Force')
     fig.legend()
@@ -123,20 +223,70 @@ def delimitTrial(inputDF):
     return(outputDat)
 
 def filterForce(inputForce, sampFrq, cutoffFrq):
-        # low-pass filter the input force signals
-        #t = np.arange(len(inputForce)) / sampFrq
-        w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
-        b, a = sig.butter(4, w, 'low')
-        filtForce = sig.filtfilt(b, a, inputForce)
-        return(filtForce)
+    """
+    Low pass filter the input signal
+
+    Parameters
+    ----------
+    inputForce : list
+        Input signal (e.g. vertical force)
+    sampFrq : int
+        sampling frequency
+    cutoffFrq : int
+        low-pass filtering cut-off frequency
+
+    Returns
+    -------
+    filtForce: list
+        the low-pass filtered signal of the "inputForce"
+
+    """
+    # low-pass filter the input force signals
+    #t = np.arange(len(inputForce)) / sampFrq
+    w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
+    b, a = sig.butter(4, w, 'low')
+    filtForce = sig.filtfilt(b, a, inputForce)
+    return(filtForce)
     
-def trimForce(inputDF, threshForce):
-    forceTot = inputDF.LForceZ
-    forceTot[forceTot<threshForce] = 0
-    forceTot = np.array(forceTot)
-    return(forceTot)
+def trimForce(ForceVert, threshForce):
+    """
+    Function to zero the vertical force below a threshold
+
+    Parameters
+    ----------
+    ForceVert : list
+        Vertical ground reaction force
+    threshForce : float
+        Zeroing threshold
+
+    Returns
+    -------
+    ForceVert: numpy array
+        Vertical ground reaction force that has been zeroed below a threshold
+
+    """
+    ForceVert[ForceVert<threshForce] = 0
+    ForceVert = np.array(ForceVert)
+    return(ForceVert)
 
 def trimLandings(landingVec, takeoffVec):
+    """
+    Function to ensure that the first landing index is greater than the first 
+    take-off index
+
+    Parameters
+    ----------
+    landingVec : list
+        indices of the landings
+    takeoffVec : list
+        indices of the take-offs
+
+    Returns
+    -------
+    landingVec: list
+        updated indices of the landings
+
+    """
     if landingVec[0] > takeoffVec[0]:
         landingVec.pop(0)
         return(landingVec)
@@ -144,6 +294,22 @@ def trimLandings(landingVec, takeoffVec):
         return(landingVec)
     
 def trimTakeoffs(landingVec, takeoffVec):
+    """
+    Function to ensure that the first take-off index is greater than the first 
+    landing index
+
+    Parameters
+    ----------
+    landingVec : list
+        indices of the landings
+    takeoffVec : list
+        indices of the take-offs
+
+    Returns
+    -------
+    takeoffVec
+
+    """
     if landingVec[0] > takeoffVec[0]:
         takeoffVec.pop(0)
         return(takeoffVec)
@@ -152,9 +318,29 @@ def trimTakeoffs(landingVec, takeoffVec):
     
     # preallocate matrix for force and fill in with force data
 def forceMatrix(inputForce, landings, noSteps, stepLength):
+    """
+    Create a matrix that contains the clipped ground reaction force based on
+    initial contact (or could be another variable)
+
+    Parameters
+    ----------
+    inputForce : list
+        Input variable that is of interest
+    landings : list
+        initial contact indices
+    noSteps : int
+        desired number of steps to examine
+    stepLength : int
+        Length (of frames) of interest
+
+    Returns
+    -------
+    preForce : numpy array
+        Input data segmented into similar length steps
+
+    """
     #input a force signal, return matrix with n rows (for each landing) by m col
     #for each point in stepLen.
-    #skip every other landing for TM FP data
     preForce = np.zeros((noSteps,stepLength))
     
     for iterVar, landing in enumerate(landings):
@@ -191,11 +377,10 @@ shoeCondition = []
 forceTime = np.zeros((len(entries),210))
 subShort = []
 configShort = []
-# when COPx is more negative, that is left foot strike
+
 ## loop through the selected files
 for loop, file in enumerate(entries):
     try:
-        
         fName = file #Load one file at a time
         
         #Parse file name into subject and configuration 
@@ -220,14 +405,9 @@ for loop, file in enumerate(entries):
         else: 
             forceDat = dat
         
-        if subName == 'RosaLoveszy':
-            MForce = forceDat.LForceY*-1
-            brakeFilt = forceDat.LForceX * -1 
-        else:
-            MForce = forceDat.LForceX
-            brakeFilt = forceDat.LForceY * -1        
-            
-        forceZ = trimForce(forceDat, fThresh)
+        MForce = forceDat.LForceX
+        brakeFilt = forceDat.LForceY * -1        
+        forceZ = trimForce(forceDat.LForceZ, fThresh)
         
                 
         #find the landings and takeoffs of the FP as vectors
