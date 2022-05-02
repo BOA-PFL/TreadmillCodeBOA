@@ -30,16 +30,44 @@ entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 
 
 # list of functions 
-# finding landings on the force plate once the filtered force exceeds the force threshold
 def findLandings(force, fThresh):
+    """
+    The purpose of this function is to determine the landings (foot contacts)
+    events on the force plate when the filtered vertical ground reaction force
+    exceeds the force threshold
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force. 
+
+    Returns
+    -------
+    lic : list
+        indices of the landings (foot contacts)
+
+    """
     lic = []
     for step in range(len(force)-1):
         if force[step] == 0 and force[step + 1] >= fThresh:
             lic.append(step)
     return lic
 
-#Find takeoff from FP when force goes from above thresh to 0
 def findTakeoffs(force, fThresh):
+    """
+    Find takeoff from FP when force goes from above thresh to 0
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force
+
+    Returns
+    -------
+    lto : list
+        indices of the take-offs
+
+    """
     lto = []
     for step in range(len(force)-1):
         if force[step] >= fThresh and force[step + 1] == 0:
@@ -48,8 +76,31 @@ def findTakeoffs(force, fThresh):
 
 
 def calcVLR(force, startVal, lengthFwd, endLoading):
-    # function to calculate VLR from 80 and 20% of the max value observed in the first n
-    # indices (n defined by lengthFwd). 
+    """
+    Function to calculate VLR from 80 and 20% of the max value observed in the 
+    first n indices (n defined by lengthFwd).
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force
+    startVal : int
+        The value to start computing the loading rate from. Typically the first
+        index after the landing (foot contact) detection
+    lengthFwd : int
+        Number of indices to examine forward to compute the loading rate
+    endLoading : int
+        set to where an impact peak should have occured if there is one and can 
+        be biased longer so the for loop doesn't error out
+    sampFrq : int
+        sample frequency
+
+    Returns
+    -------
+    VLR
+        vertical loading rate
+
+    """
     tmpDiff = np.diff(force[startVal:startVal+500])
     
     if next(x for x, val in enumerate( tmpDiff ) 
@@ -79,13 +130,48 @@ def calcVLR(force, startVal, lengthFwd, endLoading):
         
     return(VLR)
     
-#Find max braking force moving forward
 def calcPeakBrake(force, landing, length):
+    """
+    Compute the maximum breaking (A/P) force during locomotion.
+
+    Parameters
+    ----------
+    force : list
+        A/P ground reaction force
+    landing : int
+        the landing (foot contact) of the step/stride of interest
+    length : int
+        number of indices to look forward for computing the maximum breaking
+        force
+
+    Returns
+    -------
+    minimum of the force (in a function): list
+
+    """
     newForce = np.array(force)
     return min(newForce[landing:landing+length])
 
 def findNextZero(force, length):
-    # Starting at a landing, look forward (after first 15 indices)
+    """
+    Find the zero-crossing in the A/P ground reaction force that indicates the 
+    transition from breaking to propulsion
+
+    Parameters
+    ----------
+    force : list
+        A/P ground reaction force that is already segmented from initial
+        contact to take-off
+    length : int
+        number of indices to look forward for the zero-crossing
+
+    Returns
+    -------
+    step : int
+        number of indicies that the zero crossing occurs
+
+    """
+    # Starting at a landing, look forward (after first 45 indices)
     # to the find the next time the signal goes from - to +
     for step in range(length):
         if force[step] <= 0 and force[step + 1] >= 0 and step > 15:
@@ -94,7 +180,21 @@ def findNextZero(force, length):
 
 
 def delimitTrial(inputDF):
-    # generic function to plot and start/end trial #
+    """
+    Function to crop the data
+
+    Parameters
+    ----------
+    inputDF : dataframe
+        Original dataframe
+
+    Returns
+    -------
+    outputDat: dataframe
+        Dataframe that has been cropped based on selection
+
+    """
+    print('Select 2 points: the start and end of the trial')
     fig, ax = plt.subplots()
     
     ax1 = fig.add_subplot(111)
@@ -114,30 +214,96 @@ def delimitTrial(inputDF):
     return(outputDat)
 
 def filterForce(inputForce, sampFrq, cutoffFrq):
-        # low-pass filter the input force signals
-        #t = np.arange(len(inputForce)) / sampFrq
-        w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
-        b, a = sig.butter(4, w, 'low')
-        filtForce = sig.filtfilt(b, a, inputForce)
-        return(filtForce)
+    """
+    Low pass filter the input signal
+
+    Parameters
+    ----------
+    inputForce : list
+        Input signal (e.g. vertical force)
+    sampFrq : int
+        sampling frequency
+    cutoffFrq : int
+        low-pass filtering cut-off frequency
+
+    Returns
+    -------
+    filtForce: list
+        the low-pass filtered signal of the "inputForce"
+
+    """
+    # low-pass filter the input force signals
+    #t = np.arange(len(inputForce)) / sampFrq
+    w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
+    b, a = sig.butter(4, w, 'low')
+    filtForce = sig.filtfilt(b, a, inputForce)
+    return(filtForce)
     
 def trimForce(inputDF, threshForce):
+    """
+    Function to zero the vertical force below a threshold
+
+    Parameters
+    ----------
+    ForceVert : list
+        Vertical ground reaction force
+    threshForce : float
+        Zeroing threshold
+
+    Returns
+    -------
+    ForceVert: numpy array
+        Vertical ground reaction force that has been zeroed below a threshold
+
+    """
     forceTot = inputDF.ForcesZ
     forceTot[forceTot<threshForce] = 0
     forceTot = np.array(forceTot)
     return(forceTot)
 
 def defThreshold(inputDF):
-        # find threshold force
-        fig, ax = plt.subplots()
-        ax.plot(inputDF.ForcesZ, label = 'Right Foot Force')
-        print('Select a point to represent 0 in the trial')
-        pts = np.asarray(plt.ginput(1, timeout=-1))
-        plt.close()
-        fThresh = pts[0][1]
-        return(fThresh)
+    """
+    Function to define a force threshold, below which the
+    forces can be set to zero using "trimForce"
+
+    Parameters
+    ----------
+    inputDF : dataframe
+        Dataframe containing all collected data for a trial
+
+    Returns
+    -------
+    fThresh : list(float)
+        Selected threshold from the interactive plot
+
+    """
+    # find threshold force
+    fig, ax = plt.subplots()
+    ax.plot(inputDF.ForcesZ, label = 'Right Foot Force')
+    print('Select a point to represent 0 in the trial')
+    pts = np.asarray(plt.ginput(1, timeout=-1))
+    plt.close()
+    fThresh = pts[0][1]
+    return(fThresh)
 
 def trimLandings(landingVec, takeoffVec):
+    """
+    Function to ensure that the first landing index is greater than the first 
+    take-off index
+
+    Parameters
+    ----------
+    landingVec : list
+        indices of the landings
+    takeoffVec : list
+        indices of the take-offs
+
+    Returns
+    -------
+    landingVec: list
+        updated indices of the landings
+
+    """
     if landingVec[len(landingVec)-1] > takeoffVec[len(landingVec)-1]:
         landingVec.pop(0)
         return(landingVec)
@@ -145,6 +311,22 @@ def trimLandings(landingVec, takeoffVec):
         return(landingVec)
 
 def trimTakeoffs(landingVec, takeoffVec):
+    """
+    Function to ensure that the first take-off index is greater than the first 
+    landing index
+
+    Parameters
+    ----------
+    landingVec : list
+        indices of the landings
+    takeoffVec : list
+        indices of the take-offs
+
+    Returns
+    -------
+    takeoffVec
+
+    """
     if landingVec[0] > takeoffVec[0]:
         takeoffVec.pop(0)
         return(takeoffVec)
@@ -223,14 +405,10 @@ PkLat = []
 kneeXROM = []
 kneeZROM = []
 
-# start for loop
+# Index through all files within the selected folder
 for fName in entries:
     try:
-        #Preallocation
-
-        ### load file in
-        #fName = entries[0] #Load one file at a time
-        
+        # Load the data        
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)  
         
         dat.ForcesZ = dat.ForcesZ * -1
@@ -318,7 +496,8 @@ for fName in entries:
         # else:
         #     trimmedLandings = landings[1:-1:2]
         #     trimmedTakesoffs = takeoffs[1:-1:2]
-                
+        
+        # Index through all the landings        
         for countVar, landing in enumerate(trimmedLandings):
             try:
                 # separate into positive and negatiave work
@@ -389,6 +568,7 @@ for fName in entries:
     except:
         print(fName)
 
+# Put all variables of interest into a single variable
 outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnklePw':list(pkAnklePw), 'AnkleNetWork':list(ankleNetWork),
                          'AnkleNegWork':list(ankleNegWork), 'AnklePosWork':list(anklePosWork),
                          'PkKneePw':list(pkKneePw), 'KneeNetWork':list(kneeNetWork),'KneeNegWork':list(kneeNegWork),'KneePosWork':list(kneePosWork),
@@ -403,12 +583,35 @@ outcomes = pd.DataFrame({'Subject':list(sName), 'Config': list(tmpConfig),'PkAnk
                          'pkHipMomX':list(pkHipMomX),  'pkHipMomY':list(pkHipMomY), 'pkHipMomZ':list(pkHipMomZ), 'kneeXROM':list(kneeXROM),
                          'kneeZROM':list(kneeZROM)})
 
+# Create csv with all outcome variables
 outcomes.to_csv('C:\\Users\\Daniel.Feeney\\Dropbox (Boa)\\Endurance Health Validation\\DU_Running_Summer_2021\\Data\\KinematicsKineticsROM2.csv')#, mode ='a',header = False)
 #outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\KineticsKinematics\\TM\\KinKinematics.csv')#, mode ='a',header = False)
 
 
 def makeFig(inputDF, forceCol, Xcol, Ycol, Zcol, title):
-    # plot aligned time series data for first-look at the data
+    """
+    Plot aligned time series data for first-look at the data
+
+    Parameters
+    ----------
+    inputDF : dataframe
+        Dataframe containing all data
+    forceCol : str
+        Column header for GRF in string format (e.g. 'ForcesZ')
+    Xcol : str
+        Column header for the intended variable in string format (e.g. 'ForcesZ')
+    Ycol : str
+        Column header for the intended variable in string format (e.g. 'ForcesZ')
+    Zcol : str
+        Column header for the intended variable in string format (e.g. 'ForcesZ')
+    title : str
+        title of the plot
+
+    Returns
+    -------
+    None.
+
+    """
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     

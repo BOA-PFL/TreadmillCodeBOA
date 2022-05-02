@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Sep 23 11:38:57 2020
-Analyzing the force data from our Bertec duel belt Treadmill
-Calculates relevent metrics for running and walking with optional parameters 
-at the top. 
-manualTrim = 1 means you want to plot each force time series 
-and select when the trial starts and ends
-plottingEnabled will show a plot for each iteration (not recommended)
-fThresh is the force threshold to set force to 0 
-@author: Daniel.Feeney
+Created on Wed March 2022
+
+This code has been augmented from previous treadmill-based codes to test the 
+distal rearfoot power computations. 
+
+@author: Eric.Honert
 """
 
 import pandas as pd
@@ -16,6 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import scipy.signal as sig
+from scipy.fft import fft, fftfreq
 import scipy
 
 
@@ -28,15 +26,31 @@ plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 50
 timeToLoad = 75 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
+save_on = 0 # Turn to 1 to save outcomes to csv
 
 # Look at the text files from the foot work 
-fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Segments\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\FootPower\\'
+fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\FootPower\\'
 entries_footwork = os.listdir(fPath_footwork)
    
 #______________________________________________________________________________    
 # list of functions 
-# finding landings on the force plate once the filtered force exceeds the force threshold
 def findLandings(force):
+    """
+    The purpose of this function is to determine the landings (foot contacts)
+    events on the force plate when the filtered vertical ground reaction force
+    exceeds the force threshold
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force. 
+
+    Returns
+    -------
+    lic : list
+        indices of the landings (foot contacts)
+
+    """
     lic = []
     for step in range(len(force)-1):
         if force[step] == 0 and force[step + 1] >= fThresh:
@@ -46,89 +60,67 @@ def findLandings(force):
         lic = lic[1:]
     return lic
 
-#Find takeoff from FP when force goes from above thresh to 0
 def findTakeoffs(force):
+    """
+    Find takeoff from FP when force goes from above thresh to 0
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force
+
+    Returns
+    -------
+    lto : list
+        indices of the take-offs
+
+    """
     lto = []
     for step in range(len(force)-1):
         if force[step] >= fThresh and force[step + 1] == 0:
             lto.append(step + 1)
     return lto
-
-
-def calcVLR(force, startVal, lengthFwd, endLoading):
-    # function to calculate VLR from 80 and 20% of the max value observed in the first n
-    # indices (n defined by lengthFwd). 
-    # endLoading should be set to where an impact peak should have occured if there is one
-    # and can be biased longer so the for loop doesn't error out
-    # lengthFwd is how far forward to look to calculate VLR
-    tmpDiff = np.diff(force[startVal:startVal+500])
-    
-    if next(x for x, val in enumerate( tmpDiff ) 
-                      if val < 0) < endLoading:
-        maxFindex = next(x for x, val in enumerate( tmpDiff ) 
-                      if val < 0)
-        maxF = force[startVal + maxFindex]
-        eightyPctMax = 0.8 * maxF
-        twentyPctMax = 0.2 * maxF
-            # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
-        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
-                      if val > eightyPctMax) 
-        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
-                      if val > twentyPctMax) 
-        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
-    
-    else:
-        maxF = np.max(force[startVal:startVal+endLoading])
-        eightyPctMax = 0.8 * maxF
-        twentyPctMax = 0.2 * maxF
-        # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
-        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+endLoading]) 
-                          if val > eightyPctMax) 
-        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+endLoading]) 
-                          if val > twentyPctMax) 
-        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/1000) - (twentyIndex/1000)))
-        
-    return(VLR)
-    
-#Find max braking force moving forward
-def calcPeakBrake(force, landing, length):
-    newForce = np.array(force)
-    return min(newForce[landing:landing+length])
-
-def findNextZero(force, length):
-    # Starting at a landing, look forward (after first 15 indices)
-    # to the find the next time the signal goes from - to +
-    for step in range(length):
-        if force[step] <= 0 and force[step + 1] >= 0 and step > 45:
-            break
-    return step
-
-def delimitTrial(inputDF):
-    # generic function to plot and start/end trial #
-    fig, ax = plt.subplots()
-    ax.plot(inputDF.LForceZ, label = 'Left Force')
-    fig.legend()
-    pts = np.asarray(plt.ginput(2, timeout=-1))
-    plt.close()
-    outputDat = inputDF.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
-    outputDat = outputDat.reset_index()
-    return(outputDat)
-
-def filterForce(inputForce, sampFrq, cutoffFrq):
-        # low-pass filter the input force signals
-        #t = np.arange(len(inputForce)) / sampFrq
-        w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
-        b, a = sig.butter(4, w, 'low')
-        filtForce = sig.filtfilt(b, a, inputForce)
-        return(filtForce)
     
 def trimForce(inputDF, threshForce):
+    """
+    Function to zero the vertical force below a threshold
+
+    Parameters
+    ----------
+    ForceVert : list
+        Vertical ground reaction force
+    threshForce : float
+        Zeroing threshold
+
+    Returns
+    -------
+    ForceVert: numpy array
+        Vertical ground reaction force that has been zeroed below a threshold
+
+    """
     forceTot = inputDF.GRF_Z
     forceTot[forceTot<threshForce] = 0
     forceTot = np.array(forceTot)
     return(forceTot)
 
 def trimLandings(landingVec, takeoffVec):
+    """
+    Function to ensure that the first landing index is greater than the first 
+    take-off index
+
+    Parameters
+    ----------
+    landingVec : list
+        indices of the landings
+    takeoffVec : list
+        indices of the take-offs
+
+    Returns
+    -------
+    landingVec: list
+        updated indices of the landings
+
+    """
     if landingVec[0] > takeoffVec[0]:
         landingVec.pop(0)
         return(landingVec)
@@ -136,34 +128,36 @@ def trimLandings(landingVec, takeoffVec):
         return(landingVec)
     
 def trimTakeoffs(landingVec, takeoffVec):
+    """
+    Function to ensure that the first take-off index is greater than the first 
+    landing index
+
+    Parameters
+    ----------
+    landingVec : list
+        indices of the landings
+    takeoffVec : list
+        indices of the take-offs
+
+    Returns
+    -------
+    takeoffVec
+
+    """
     if landingVec[0] > takeoffVec[0]:
         takeoffVec.pop(0)
         return(takeoffVec)
     else:
         return(takeoffVec)
     
-    # preallocate matrix for force and fill in with force data
-def forceMatrix(inputForce, landings, noSteps, stepLength):
-    #input a force signal, return matrix with n rows (for each landing) by m col
-    #for each point in stepLen.
-    #skip every other landing for TM FP data
-    preForce = np.zeros((noSteps,stepLength))
-    
-    for iterVar, landing in enumerate(landings):
-        try:
-            preForce[iterVar,] = inputForce[landing:landing+stepLength]
-        except:
-            print(landing)
-            
-    return preForce
 
-def dist_seg_power_treadmill(inputDF,speed,slope,landings,takeoffs,direction):
+def dist_seg_power_treadmill(inputDF,speed,slope,landings,takeoffs):
     """
     The purpose of this function is to compute the distal segment power -
     commonly applied to the rearfoot to obtain the distal rearfoot power. The
     power in this formation was provided in Takahashi et al. 2012; but
     originally in Siegel et al. 1996. For full derivations, see Zelik and 
-    Honert 2018 appendix. 
+    Honert 2018 appendix. This code assumes that the walking direction is +y
 
     Parameters
     ----------
@@ -174,26 +168,24 @@ def dist_seg_power_treadmill(inputDF,speed,slope,landings,takeoffs,direction):
             Seg_COM_Pos = Segment COM Position (ex: Foot COM Position)
             CenterOfPressure = Location of the center of pressure
             FreeMoment = Free moment on force platform
-            GRF = Ground Reaction Force            
-    speed : scalar
+            GRF = Ground Reaction Force. Ensure that the input GRF is the REACTION
+            force; whereas, motion monitor exports the action force
+    speed : float
         Treadmill belt speed - can be used as a debugging variable or to set
         the speed of the foot in 3D space. 
-    slope : scalar
+    slope : int or float
         Slope of the treadmill
     landings : list
         Initial foot contact
     takeoffs : list
         Or toe-offs
-    direction: list
-        1 for x being the forward direction, 2 for y being the forward direction
     
     Returns
     -------
-    power : TYPE
-        DESCRIPTION.
+    power : numpy array
+        distal rearfoot power
 
     """
-    
     # Make Variables NumPy Arrays for matrix opperations
     Seg_Ang_Vel = np.array(list(zip(inputDF.FootAngVel_X,inputDF.FootAngVel_Y,inputDF.FootAngVel_Z)))*(np.pi/180)    
     Seg_COM_Pos = np.array(list(zip(inputDF.FootCOMPos_X,inputDF.FootCOMPos_Y,inputDF.FootCOMPos_Z)))
@@ -203,7 +195,6 @@ def dist_seg_power_treadmill(inputDF,speed,slope,landings,takeoffs,direction):
     # Note: The free moment (like the GRF) is needs to be negated in order to
     # be the reaction free moment
     FreeMoment = -1*np.array(list(zip(inputDF.FMOM_X,inputDF.FMOM_Y,inputDF.FMOM_Z)))
-    
     # Debugging variable to examine foot speed
     debug = 0
     # When using a treadmill is used for locomotion and the distal segment
@@ -215,15 +206,12 @@ def dist_seg_power_treadmill(inputDF,speed,slope,landings,takeoffs,direction):
     # Allocate variables
     step_speed = np.zeros((len(landings)-1,1))
     
-    
+    # Index through the landings
     for ii in range(len(landings)-1):
         stepframe = takeoffs[ii]-landings[ii]
         # Frames to analyze based on the foot flat percentages
         FFframes = range(landings[ii]+round(foot_flat[0]*stepframe),landings[ii]+round(foot_flat[1]*stepframe),1)
-        if direction == 1:
-            step_speed[ii] = np.mean(inputDF.FootCOMVel_X[FFframes])
-        elif direction == 2:
-            step_speed[ii] = np.mean(inputDF.FootCOMVel_Y[FFframes])
+        step_speed[ii] = np.mean(inputDF.FootCOMVel_Y[FFframes])
 
     # Find the average treadmill belt speed of the trial (also exclude any 
     # zeros in the estimate)
@@ -234,10 +222,7 @@ def dist_seg_power_treadmill(inputDF,speed,slope,landings,takeoffs,direction):
         plt.plot(step_speed)
     
     # Treadmill belt speed: will need to be updated based on the slope
-    if direction == 1:
-        belt_vel = np.array(list(zip([avg_speed]*len(inputDF.FootCOMVel_X),[0]*len(inputDF.FootCOMVel_Y),[0]*len(inputDF.FootCOMVel_Z))))
-    elif direction == 2:
-        belt_vel = np.array(list(zip([0]*len(inputDF.FootCOMVel_X),[avg_speed]*len(inputDF.FootCOMVel_Y),[0]*len(inputDF.FootCOMVel_Z))))
+    belt_vel = np.array(list(zip([0]*len(inputDF.FootCOMVel_X),[avg_speed]*len(inputDF.FootCOMVel_Y),[0]*len(inputDF.FootCOMVel_Z))))
     
     # Adjust the segment velocity based on belt speed
     adj_Seg_COM_Vel = Seg_COM_Vel+belt_vel
@@ -247,16 +232,32 @@ def dist_seg_power_treadmill(inputDF,speed,slope,landings,takeoffs,direction):
     
     # test = crop_strides_fft(inputDF.FootCOMPos_X,landings)
     
-    
     power = power_rot+power_tran
-    
-    
     return power
 
 def intp_strides(var,landings):
+    """
+    Function to interpolate the variable of interest across a stride
+    (from foot contact to subsiquent foot contact) in order to plot the 
+    variable of interest over top each other
 
+    Parameters
+    ----------
+    var : list or numpy array
+        Variable of interest. Can be taken from a dataframe or from a numpy array
+    landings : list
+        Foot contact indicies
+
+    Returns
+    -------
+    intp_var : numpy array
+        Interpolated variable to 101 points with the number of columns dictated
+        by the number of strides.
+
+    """
+    # Preallocate
     intp_var = np.zeros((101,len(landings)-1))
-
+    # Index through the strides
     for ii in range(len(landings)-1):
         dum = var[landings[ii]:landings[ii+1]]
         f = scipy.interpolate.interp1d(np.arange(0,len(dum)),dum)
@@ -265,11 +266,29 @@ def intp_strides(var,landings):
     return intp_var
 
 def crop_strides_fft(var,landings):
-    from scipy.fft import fft, fftfreq
-    
+    """
+    Function to crop the intended variable into strides, pad the strides with 
+    zeros and perform the FFT on the variable of interest
+
+    Parameters
+    ----------
+    var : list or numpy array
+        Variable of interest
+    landings : list
+        foot-contact or landing indices
+
+    Returns
+    -------
+    fft_out : numpy array
+        FFT of the variable of interest during the stride
+    xf : numpy array
+        Frequency vector from the FFT in [Hz]
+
+    """
+    # Preallocate
     intp_var = np.zeros((500,len(landings)-1))
     fft_out = np.zeros((500,len(landings)-1))
-    
+    # Index through the strides
     for ii in range(len(landings)-1):
         intp_var[0:landings[ii+1]-landings[ii],ii] = var[landings[ii]:landings[ii+1]]
         fft_out[:,ii] = fft(intp_var[:,ii])
@@ -314,16 +333,9 @@ for ii in range(len(entries_footwork)):
         dat.GRF_X = -1 * dat.GRF_X
         dat.GRF_Y = -1 * dat.GRF_Y
         dat.GRF_Z = -1 * dat.GRF_Z
-        
-        # Trim the trials to a smaller section and threshold force
-        if manualTrim == 1:
-            print('Select start and end of analysis trial 1')
-            forceDat = delimitTrial(dat)
-        else: 
-            forceDat = dat
-        
+
         # Zero the forces below the threshold
-        forceZ = trimForce(forceDat, fThresh)
+        forceZ = trimForce(dat, fThresh)
         
         # Find the landings and takeoffs of the FP as vectors
         landings = findLandings(forceZ)
@@ -337,10 +349,7 @@ for ii in range(len(entries_footwork)):
         # [sigFFT,XX] = crop_strides_fft(dat.FootAngVel_Y,landings)
         
         # Compute the distal rearfoot power:
-        if subName == 'RosaLoveszy':
-            DFootPower = dist_seg_power_treadmill(dat,1.2,0,landings,takeoffs,1)
-        else:
-            DFootPower = dist_seg_power_treadmill(dat,1.2,0,landings,takeoffs,2)
+        DFootPower = dist_seg_power_treadmill(dat,1.2,0,landings,takeoffs)
         
         avgFootPow[:,ii] = np.mean(intp_strides(DFootPower,landings),axis = 1)
         
@@ -354,26 +363,12 @@ for ii in range(len(entries_footwork)):
                 Config.append(ConfigTmp)
             except:
                 print(fName, landing)
-        
-
-        1
-        
     except:
         print(fName)
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-
 outcomes = pd.DataFrame({'Subject':list(Subject), 'Config': list(Config),'DisWork': list(DisWork)})
 
-outcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Segments\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\\FootWork.csv",mode='a',header=True)
+if save_on == 1:
+    outcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Segments\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\\FootWork.csv",mode='a',header=True)
 
 
