@@ -55,7 +55,7 @@ fPath = 'C:\\Users\\daniel.feeney\\OneDrive - Boa Technology Inc\\Desktop\\Metab
 fileExt = r".xlsx"
 entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 
-configLabels = ['Nike_1','Puma_1','Puma2_1','Nike_2','Puma_2', 'Puma2_2', 'NB_1']
+configLabels = ['DD_1','DDP_1','Lace_1','LaceP_1','LaceP_2', 'Lace_2', 'DDP_2', 'DD_2']
 
 met = []
 trial = []
@@ -135,6 +135,15 @@ for file in entries:
         config.append(configLabels[6].split('_')[0])
         trial.append(configLabels[6].split('_')[1])
         
+        try:
+            met.append(calcMean2MinEpoch(dat, configLabels[7]))
+            shoe7 = saveTS(dat, configLabels[7])
+        except:
+            met.append(calcMean2MinEpoch_fail(dat, configLabels[7]))   
+            shoe7 = saveTS_late(dat, configLabels[7])
+        config.append(configLabels[7].split('_')[0])
+        trial.append(configLabels[7].split('_')[1])
+        
     except:
         print(file)
 
@@ -144,7 +153,7 @@ outcomes = pd.DataFrame({'Trial':list(trial), 'Config':list(config), 'EE':list(m
 
 avgs = outcomes.groupby('Config')['EE'].mean()
 sds = outcomes.groupby('Config')['EE'].std()
-configs = ['NB RC','Nike VF', 'Puma Green', 'Puma Orange']
+configs = ['DD_1','DDP_1','Lace_1','LaceP_1','LaceP_2', 'Lace_2', 'DDP_2', 'DD_2']
 
 plt.rcParams['font.size'] = 18
 fig = plt.figure(figsize = (10,8))
