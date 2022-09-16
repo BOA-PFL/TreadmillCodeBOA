@@ -137,10 +137,10 @@ for file in entries:
         
         try:
             met.append(calcMean2MinEpoch(dat, configLabels[7]))
-            shoe7 = saveTS(dat, configLabels[7])
+            shoe8 = saveTS(dat, configLabels[7])
         except:
             met.append(calcMean2MinEpoch_fail(dat, configLabels[7]))   
-            shoe7 = saveTS_late(dat, configLabels[7])
+            shoe8 = saveTS_late(dat, configLabels[7])
         config.append(configLabels[7].split('_')[0])
         trial.append(configLabels[7].split('_')[1])
         
@@ -167,25 +167,15 @@ def calcPctDiff(val1, val2):
     avgVal = (val1 + val2)/2
     return round((absDiff/avgVal) * 100,2)
 
-NBdat = outcomes.groupby('Config')['EE'].mean()[0]
-#Nikedat = 14.1819
-Pumadat = outcomes.groupby('Config')['EE'].mean()[2]
+shoeGrp1 = outcomes.groupby('Config')['EE'].mean()[0]
+shoeGrp2 = outcomes.groupby('Config')['EE'].mean()[2]
 
-#calcPctDiff(NBdat, Nikedat)
-# if Nikedat < NBdat:
-#     print('Nike is',calcPctDiff(NBdat, Nikedat),'better than NB')
-# else:
-#     print('NB is',calcPctDiff(NBdat, Nikedat),'better than Nike')
-    
-# if Pumadat < NBdat:
-#     print('Puma is',calcPctDiff(NBdat, Pumadat),'better than NB')
-# else:
-#     print('NB is',calcPctDiff(NBdat, Pumadat),'better than Puma')
+calcPctDiff(shoeGrp1, shoeGrp2)
+if shoeGrp1 < shoeGrp2:
+    print(str(shoeGrp1),calcPctDiff(shoeGrp1, shoeGrp2),'better than ', str(shoeGrp2))
+else:
+    print(str(shoeGrp2),calcPctDiff(shoeGrp1, shoeGrp2),'better than ', str(shoeGrp1))
 
-# if Pumadat < Nikedat:
-#     print('Puma is',calcPctDiff(Nikedat, Pumadat),'better than NB')
-# else:
-#     print('Nike is',calcPctDiff(Nikedat, Pumadat),'better than Puma')
 
 fig = plt.figure(figsize = (10,8))
 plt.plot(shoe1, label = configLabels[0])
@@ -195,6 +185,7 @@ plt.plot(shoe4, label = configLabels[3])
 plt.plot(shoe5, label = configLabels[4])
 plt.plot(shoe6, label = configLabels[5])
 plt.plot(shoe7, label = configLabels[6])
+plt.plot(shoe8, label = configLabels[7])
 plt.legend()
 
 
