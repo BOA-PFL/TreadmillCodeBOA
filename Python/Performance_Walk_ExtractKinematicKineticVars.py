@@ -372,6 +372,105 @@ def intp_strides(var,landings,GS):
         
     return intp_var
 
+def findPosNegWork(var,freq):
+    """
+    Function to compute the positive and negative work for a particular variable
+    that is already segmented across a step or stride. 
+
+    Parameters
+    ----------
+    var : list or numpy array
+        Variable of interest that has been segmented for a step/stride
+    freq : int
+        frequency
+
+    Returns
+    -------
+    pos_work : float
+        positive work
+    neg_work : float
+        negative work
+
+    """
+    
+    # Define positive and negative portions for the variable of interest
+    pos_var = np.array(var); pos_var = pos_var[pos_var > 0]
+    neg_var = np.array(var); neg_var = neg_var[neg_var < 0]
+    
+    pos_work = scipy.integrate.trapezoid(pos_var,dx = 1/freq)
+    neg_work = scipy.integrate.trapezoid(neg_var,dx = 1/freq)
+    
+    return [pos_work,neg_work]
+
+def COMPower_Work_walking(LGRF,RGRF,slope,HS,GoodStrides,freq):
+    """
+    This function computes the center-of-mass power and work for the "leading"
+    limb (ie the limb that is used to segment the GRFs)
+
+    Parameters
+    ----------
+    LGRF : numpy array (Nx3)
+        Left foot GRF
+    RGRF : numpy array (Nx3)
+        Right foot GRF
+    slope : float or int
+        slope of the treadmill
+    HS : numpy array (Nx1)
+        Heel strike (foot contact) array
+    GoodStrides : numpy array (Nx1)
+        Array of good strides
+    freq : foat or int
+        Data collection frequency
+
+    Returns
+    -------
+    CW_pos : list
+        Positive COM work [J]
+    CW_neg : list
+        Negative COM work [J]
+
+    """
+    # Compute the COM power using the individual limbs method                
+    
+    # Debugging tool: Showing the time-continuous COM power
+    show_COMpower = 0
+
+    # First compute the approximate body weight: will need to rotate the
+    # ground reaction forces into the inertial coordinate system
+    slope = slope*np.pi/180
+    BM = np.nanmean(LGRF[:,1]*np.sin(slope)+LGRF[:,2]*np.cos(slope)+RGRF[:,1]*np.sin(slope)+RGRF[:,2]*np.cos(slope))/9.81
+    # Compute the COM acceleration
+    acc = (LGRF+RGRF)/BM - [0,9.81*np.sin(slope),9.81*np.cos(slope)]
+    
+    # Pre-allocate variable space
+    CW_pos = []; CW_neg = []
+    
+    COM_power_store = np.zeros((101,len(GoodStrides)-1))
+    # Index through the good strides for computing COM Power + Work
+    for cc,jj in enumerate(GoodStrides[:-1]):
+        acc_stride = acc[HS[jj]:HS[jj+1],:]
+        time_stride = np.array(range(len(acc_stride)))/freq
+        com_vel = cumtrapz(acc_stride,time_stride,initial=0,axis=0)
+        com_vel = com_vel - np.mean(com_vel,axis=0) + [0,speed,0]
+        # COM Power
+        com_power_lead = np.sum(com_vel*LGRF[HS[jj]:HS[jj+1],:],axis=1)
+        # Compute the positive/negative work
+        # Note: this may need to be updated for level ground for collision/push-off work
+        [pos_tmp,neg_temp] = findPosNegWork(com_power_lead,freq)
+
+        CW_pos.append(pos_tmp)
+        CW_neg.append(neg_temp)
+        # Store the time-continous COM curve
+        f = scipy.interpolate.interp1d(np.arange(0,len(com_power_lead)),com_power_lead)
+        COM_power_store[:,cc] = f(np.linspace(0,len(com_power_lead)-1,101))
+    
+    # Debugging tool: examine the time-continous curves    
+    if show_COMpower == 1:
+        plt.plot(COM_power_store)
+        plt.close() # create a breakpoint here for visualizing plots
+    
+    return(CW_pos,CW_neg)
+
 #______________________________________________________________________________
 # Read in balance file
 fPath = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\ZonalFit_Midcut_Aug2022\\Treadmill\\'
@@ -469,16 +568,13 @@ for ii in range(0,len(entries)):
             dat.Right_GRF_Y = -1 * dat.Right_GRF_Y
             
         LGRF = np.array(list(zip(dat.Left_GRF_X,dat.Left_GRF_Y,dat.Left_GRF_Z)))
-        LGRFrot = np.array((np.array([[1,0,0], [0,cos(ang),-sin(ang)],[0,sin(ang),cos(ang)]]) @ LGRF.T).T)
         RGRF = np.array(list(zip(dat.Right_GRF_X,dat.Right_GRF_Y,dat.Right_GRF_Z)))
         # Trim the trials to a smaller section and threshold force
-
         forceDat = dat
         
         MForce = dat.Left_GRF_X
         brakeFilt = dat.Left_GRF_Y      
-        forceZ = trimForce(dat.Left_GRF_Z, fThresh)
-        
+        forceZ = trimForce(dat.Left_GRF_Z, fThresh)        
                 
         #find the landings and takeoffs of the FP as vectors
         landings = findLandings(forceZ)
@@ -502,45 +598,20 @@ for ii in range(0,len(entries)):
         for jj in range(len(trimmedLandings)):
             step_time.append(trimmedTakeoffs[jj]-trimmedLandings[jj])
         
-        # Crossover detection
+        # Crossover detection: Create a variable for "Good Steps"
+        # Note: the last statement is to ensure that steady state walking is 
+        # attained for tests where 3 hops are performed.
         GS = []
         for jj in range(len(trimmedLandings)):
             if step_time[jj] < np.median(step_time) + 20 and np.min(dat.Right_GRF_Z[trimmedLandings[jj]:trimmedTakeoffs[jj]]) < fThresh and trimmedLandings[jj] > 2000:
                 GS.append(jj)
             
         GS = np.array(GS)
-
-        # Compute the COM power using the individual limbs method                
-        # First compute the approximate body weight: will need to rotate the
-        # ground reaction forces into the inertial coordinate system
-        BM = np.nanmean(LGRF[:,1]*np.sin(ang)+LGRF[:,2]*np.cos(ang)+RGRF[:,1]*np.sin(ang)+RGRF[:,2]*np.cos(ang))/9.81
-        # Compute the COM acceleration
-        acc = (LGRF+RGRF)/BM - [0,9.81*np.sin(ang),9.81*np.cos(ang)]
+        # Compute COM work
+        [tmpCW_pos,tmpCW_neg] = COMPower_Work_walking(LGRF,RGRF,ang,trimmedLandings,GS,freq)
+        COMWork_pos.extend(tmpCW_pos)
+        COMWork_neg.extend(tmpCW_neg)      
         
-        COM_power_store = np.zeros((101,len(GS)-1))
-        cc = 0
-        # Index through the good strides
-        for jj in range(len(GS)-1):
-            acc_stride = acc[trimmedLandings[GS[jj]]:trimmedLandings[GS[jj]+1],:]
-            time_stride = np.array(range(len(acc_stride)))/freq
-            com_vel = cumtrapz(acc_stride,time_stride,initial=0,axis=0)
-            com_vel = com_vel - np.mean(com_vel,axis=0) + [0,speed,0]
-            com_power_lead = np.sum(com_vel*LGRF[trimmedLandings[GS[jj]]:trimmedLandings[GS[jj]+1],:],axis=1)
-            # Compute the negative and postive work during stance
-            dum = np.array(com_power_lead[0:trimmedLandings[GS[jj]+1]-trimmedTakeoffs[GS[jj]]])
-            dum_pos = np.array(dum); dum_pos[dum_pos < 0] = 0
-            dum_neg = np.array(dum); dum_neg[dum_neg > 0] = 0
-            COMWork_pos.append(sum(dum_pos)/freq)
-            COMWork_neg.append(sum(dum_neg)/freq)
-            # Store the time-continous COM curve
-            f = scipy.interpolate.interp1d(np.arange(0,len(com_power_lead)),com_power_lead)
-            COM_power_store[:,jj] = f(np.linspace(0,len(com_power_lead)-1,101))
-            forSub.append(subName)
-            forConfig.append(config)
-            forCond.append(tmpCond)
-        
-        # plt.plot(COM_power_store)
-        # plt.close()
         # dat = dat.fillna(0)
         if fName.count('ownhill'):
             test = intp_strides(dat.RightAnklePower,landings,GS)        
@@ -549,76 +620,63 @@ for ii in range(0,len(entries)):
         
         # Compute force-based metrics
         # Index through the good steps
-        for jj in range(len(GS)-1):
+        for jj in GS[:-1]:
                 try:
-                    # Plotting time-continuous curves                
-                    # if ii > 1 and oSub[ii] != oSub[ii-1] or ii == 0:
-                    #     plt.figure(ii)
-                    # if '6deg' in fName:
-                    #     plt.plot(np.array(dat.Left_GRF_X[trimmedLandings[jj]:trimmedTakeoffs[jj]]),'r')
-                    # else: 
-                    #     plt.plot(np.array(dat.Left_GRF_X[trimmedLandings[jj]:trimmedTakeoffs[jj]]),'k')
-                    
                     # Define where next zero is
                     # Loading Rate commented out - moving away from metric
                     # VALRs.append(calcVLR(forceZ, trimmedLandings[jj]+1, 150, timeToLoad, freq))
                     # VLRtwo.append( (np.max( np.diff(forceZ[trimmedLandings[jj]+5:trimmedLandings[jj]+150]) )/(1/freq) ) )
                     
                     if fName.count('ownhill'):
-                        brakeImpulse.append( sum(i for i in -LGRF[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i < 0)/freq ) #sum all negative brake force vals
-                        propImpulse.append( sum(i for i in -LGRF[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i > 0)/freq ) #sum all positive values
-                        brakeImpulse_rot.append( sum(i for i in -LGRFrot[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i < 0)/freq ) #sum all negative brake force vals
-                        propImpulse_rot.append( sum(i for i in -LGRFrot[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i > 0)/freq ) #sum all positive values
-                        peakBrakeF.append(np.min(-LGRF[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1]))
+                        brakeImpulse.append( sum(i for i in -LGRF[trimmedLandings[jj]:trimmedTakeoffs[jj],1] if i < 0)/freq ) #sum all negative brake force vals
+                        propImpulse.append( sum(i for i in -LGRF[trimmedLandings[jj]:trimmedTakeoffs[jj],1] if i > 0)/freq ) #sum all positive values
+                        peakBrakeF.append(np.min(-LGRF[trimmedLandings[jj]:trimmedTakeoffs[jj],1]))
                         
                         if subName != 'JeffGay':
                             # Kinematics
-                            idx20 = round(0.2*(trimmedTakeoffs[GS[jj]] - trimmedLandings[GS[jj]])) + trimmedLandings[GS[jj]]
-                            pAnkEvVel.append(abs(np.min(dat.RAnkleAngVel_Frontal[trimmedLandings[GS[jj]]-20:idx20])))
+                            idx20 = round(0.2*(trimmedTakeoffs[jj] - trimmedLandings[jj])) + trimmedLandings[jj]
+                            pAnkEvVel.append(abs(np.min(dat.RAnkleAngVel_Frontal[trimmedLandings[jj]-20:idx20])))
                             kinName.append(subName)
                             kinConfig.append(config)
                             kinCond.append(tmpCond)
                         
                     else:
-                        brakeImpulse.append( sum(i for i in LGRF[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i < 0)/freq ) #sum all negative brake force vals
-                        propImpulse.append( sum(i for i in LGRF[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i > 0)/freq ) #sum all positive values
-                        brakeImpulse_rot.append( sum(i for i in LGRFrot[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i < 0)/freq ) #sum all negative brake force vals
-                        propImpulse_rot.append( sum(i for i in LGRFrot[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1] if i > 0)/freq ) #sum all positive values
-                        peakBrakeF.append(np.min(LGRF[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]],1]))
+                        brakeImpulse.append( sum(i for i in LGRF[trimmedLandings[jj]:trimmedTakeoffs[jj],1] if i < 0)/freq ) #sum all negative brake force vals
+                        propImpulse.append( sum(i for i in LGRF[trimmedLandings[jj]:trimmedTakeoffs[jj],1] if i > 0)/freq ) #sum all positive values
+                        peakBrakeF.append(np.min(LGRF[trimmedLandings[jj]:trimmedTakeoffs[jj],1]))
                         
                     
                     try:
-                        CTs.append(trimmedTakeoffs[GS[jj]] - trimmedLandings[GS[jj]])
+                        CTs.append(trimmedTakeoffs[jj] - trimmedLandings[jj])
                     except:
                         CTs.append(0)
                     
                     try:
-                        PkMed.append(np.max(MForce[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]]]))
+                        PkMed.append(np.max(MForce[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
                     except:
                         PkMed.append(0)
                     try:
-                        PkLat.append(np.min(MForce[trimmedLandings[GS[jj]]:trimmedTakeoffs[GS[jj]]]))
+                        PkLat.append(np.min(MForce[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
                     except:
                         PkLat.append(0)
-                    # forSub.append(subName)
-                    # forConfig.append(config)
-                    # forCond.append(tmpCond)
+                    forSub.append(subName)
+                    forConfig.append(config)
+                    forCond.append(tmpCond)
                 except:
-                    print(trimmedLandings[GS[jj]])
+                    print(trimmedLandings[jj])
         
 
 # foroutcomes = pd.DataFrame({'Subject':list(forSub), 'Config': list(forConfig),'Cond': list(forCond),'pBF': list(peakBrakeF),
                           # 'brakeImpulse': list(brakeImpulse), 'VALR': list(VALRs), 'VILR':list(VLRtwo),'pMF':list(PkMed),
                           # 'pLF':list(PkLat), 'CT':list(CTs),'PropImp':list(propImpulse)})
-workoutcomes = pd.DataFrame({'Subject':list(forSub), 'Config': list(forConfig),'Cond': list(forCond), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
-                             'brakeImpulse': list(brakeImpulse),'brakeImpulse_rot': list(brakeImpulse_rot),
-                             'PropImp':list(propImpulse),'PropImp_rot':list(propImpulse_rot)})
+# workoutcomes = pd.DataFrame({'Subject':list(forSub), 'Config': list(forConfig),'Cond': list(forCond), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
+#                              'brakeImpulse': list(brakeImpulse),'PropImp':list(propImpulse)})
 
-if save_on == 1:
-    workoutcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\ZonalFit_Midcut_Aug2022\\COMWork.csv",header=True)
+# if save_on == 1:
+#     workoutcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\ZonalFit_Midcut_Aug2022\\COMWork.csv",header=True)
 
-kinoutcomes = pd.DataFrame({'Subject':list(kinName), 'Config': list(kinConfig), 'Cond': list(kinCond),
-                          'pAnkEvVel': list(pAnkEvVel)})
+# kinoutcomes = pd.DataFrame({'Subject':list(kinName), 'Config': list(kinConfig), 'Cond': list(kinCond),
+#                           'pAnkEvVel': list(pAnkEvVel)})
 
 # kinoutcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\ZonalFit_Midcut_Aug2022\\Kinematics.csv",header=True)
 
