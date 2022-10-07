@@ -437,7 +437,6 @@ def COMPower_Work_walking(LGRF,RGRF,slope,HS,GoodStrides,freq):
 
     # First compute the approximate body weight: will need to rotate the
     # ground reaction forces into the inertial coordinate system
-    slope = slope*np.pi/180
     BM = np.nanmean(LGRF[:,1]*np.sin(slope)+LGRF[:,2]*np.cos(slope)+RGRF[:,1]*np.sin(slope)+RGRF[:,2]*np.cos(slope))/9.81
     # Compute the COM acceleration
     acc = (LGRF+RGRF)/BM - [0,9.81*np.sin(slope),9.81*np.cos(slope)]
