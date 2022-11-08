@@ -245,8 +245,8 @@ def trimForce(inputDF, threshForce):
 
     Parameters
     ----------
-    ForceVert : list
-        Vertical ground reaction force
+    inputDF : dataframe
+        dataframe containing all variables, including vertical (Z) GRF
     threshForce : float
         Zeroing threshold
 
