@@ -15,6 +15,7 @@ import os
 import scipy.signal as sig
 from scipy.fft import fft, fftfreq
 import scipy
+import addcopyfighandler
 
 
 # Define constants and options
@@ -230,7 +231,7 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
     power = power_rot+power_tran
     return power
 
-def intp_strides(var,landings):
+def intp_strides(var,landings,GS):
     """
     Function to interpolate the variable of interest across a stride
     (from foot contact to subsiquent foot contact) in order to plot the 
@@ -251,12 +252,12 @@ def intp_strides(var,landings):
 
     """
     # Preallocate
-    intp_var = np.zeros((101,len(landings)-1))
+    intp_var = np.zeros((101,len(GS)))
     # Index through the strides
-    for ii in range(len(landings)-1):
+    for cc,ii in enumerate(GS):
         dum = var[landings[ii]:landings[ii+1]]
         f = scipy.interpolate.interp1d(np.arange(0,len(dum)),dum)
-        intp_var[:,ii] = f(np.linspace(0,len(dum)-1,101))
+        intp_var[:,cc] = f(np.linspace(0,len(dum)-1,101))
         
     return intp_var
 
@@ -298,8 +299,8 @@ def crop_strides_fft(var,landings):
 save_on = 0 # Turn to 1 to save outcomes to csv
 
 # Look at the text files from the foot work 
-fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\WorkWear_Performance\\Jalas_July2022\\FootPower\\'
-entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('.txt')]
+fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt') and fName.count('DH')]
 
 #______________________________________________________________________________
 #Preallocate variables for storage
@@ -316,13 +317,19 @@ for ii in range(0,len(entries_footwork)):
     fName = entries_footwork[ii] #Load one file at a time
     #Parse file name into subject and configuration 
     subName = fName.split(sep = "_")[0]
-    ConfigTmp = fName.split(sep = "_")[2]
     
+    if '2D' in fName:
+        ConfigTmp = 'DD'
+    elif 'TD' in fName:
+        ConfigTmp = 'UZ'
+    elif 'BD' in fName:
+        ConfigTmp = 'LZ'
+            
     print('Processing:' + entries_footwork[ii])
     #______________________________________________________________________
     # Load the data
     dat = pd.read_csv(fPath_footwork+fName,sep='\t', skiprows = 8, header = 0)  
-    dat = dat.fillna(0)
+    # dat = dat.fillna(0)
 
     # Zero the forces below the threshold
     ForceZog = np.array(dat.GRF_Z)
@@ -341,34 +348,46 @@ for ii in range(0,len(entries_footwork)):
     Foot_COM_Pos = np.array(list(zip(dat.RFootCOMPos_X,dat.RFootCOMPos_Y,dat.RFootCOMPos_Z)))
     Foot_COM_Vel = np.array(list(zip(dat.RFootCOMVel_X,dat.RFootCOMVel_Y,dat.RFootCOMVel_Z)))
     COP = np.array(list(zip(dat.COP_X,dat.COP_Y,dat.COP_Z)))
-    GRF = np.array(list(zip(dat.GRF_X,dat.GRF_Y,dat.GRF_Z)))
+    COP = np.nan_to_num(COP,nan=0)
+    GRF = np.array(list(zip(dat.GRF_X,-dat.GRF_Y,dat.GRF_Z)))
     FMOM = np.array(list(zip(dat.FMOM_X,dat.FMOM_Y,dat.FMOM_Z)))
+    FMOM = np.nan_to_num(FMOM,nan=0)
+    
     
     
     
     DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,GRF,FMOM,-1.2,landings,takeoffs,0)
-    plt.figure(ii)
-    plt.plot(intp_strides(DFootPower,landings))
+    # [fft_out,fft_freq] = crop_strides_fft(COP[:,1],landings)
+    # plt.plot(fft_freq,fft_out)
+    # plt.xlim(0,50)
     
-    avgFootPow[:,ii] = np.mean(intp_strides(DFootPower,landings),axis = 1)
     
-    # for counterVar, landing in enumerate(landings):
-    #     # Note this disipation work is only for walking. For running compute the
-    #     # total negative work
-    #     dis_idx = round((takeoffs[counterVar]-landing)*.20)+landing
-    #     if abs(np.max(DFootPower[landing:takeoffs[counterVar]])) < 400 and np.mean(DFootPower[landing:dis_idx]) < 0 :
-    #         dis_work = scipy.integrate.trapezoid(DFootPower[landing:dis_idx],dx = 1/200)
+    GS = []
+    for jj in range(len(landings)-1):
+        # Note this disipation work is only for walking. For running compute the
+        # total negative work
+        dis_idx = round((landings[jj+1]-landings[jj])*.20)+landings[jj]
+        if np.max(abs(DFootPower[landings[jj]:landings[jj+1]])) < 500 and sum(np.isnan(dat.RFootPosDetect[landings[jj]:landings[jj+1]])) == 0 and landings[jj] > 2000:
+            dum = np.array(DFootPower[landings[jj]:dis_idx])
+            dum[dum > 0] = 0
+            dis_work = scipy.integrate.trapezoid(dum,dx = 1/200)
+            GS.append(jj)
             
-    #         if dis_work < -5:
-    #             print('oops')
+            # if dis_work < -5:
+            #     print('oops')
         
-    #         DisWork.append(dis_work)
-    #         Subject.append(subName)
-    #         Config.append(ConfigTmp)
+            # DisWork.append(dis_work)
+            # Subject.append(subName)
+            # Config.append(ConfigTmp)
+    
+    # # avgFootPow[:,ii] = np.mean(intp_strides(DFootPower,landings,np.array(GS)),axis = 1)
+    if len(GS) > 0:
+        plt.plot(intp_strides(DFootPower,landings,np.array(GS)),'r')
+        plt.close()
         
 outcomes = pd.DataFrame({'Subject':list(Subject), 'Config': list(Config),'DisWork': list(DisWork)})
 
 if save_on == 1:
-    outcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Segments\\WorkWear_Performance\\Elten_Jan2022\\Treadmill\\FootWork.csv",mode='a',header=True)
+    outcomes.to_csv("C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\ZonalFit_Midcut_Aug2022\\FootWork.csv",header=True)
 
 

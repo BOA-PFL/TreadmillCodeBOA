@@ -28,7 +28,7 @@ plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 50
 timeToLoad = 75 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
-save_on = 0 # Turn to 1 to save outcomes to csv
+
 
 
    
@@ -410,6 +410,9 @@ fPath_kin = 'C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Test
 entries_kin = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('PerformanceTestData_V2.txt')]
 
 #______________________________________________________________________________
+save_on = 0 # Turn to 1 to save outcomes to csv
+debug = 1
+
 
 #Preallocate variables for storage
 Subject = []
@@ -430,7 +433,7 @@ avgFootPow = np.zeros((101,len(entries_footwork)))
 # when COPx is more negative, that is left foot strike
 ## loop through the selected files
 
-for ii in range(90,len(entries_footwork)):
+for ii in range(139,len(entries_footwork)):
     # try:
         
         #_____________________________________________________
@@ -563,27 +566,24 @@ for ii in range(90,len(entries_footwork)):
         PosCOMWork.extend(PW)
         NegCOMWork.extend(NW)
         
+        if debug == 1:
+            plt.figure()
+            plt.subplot(1,3,1)
+            plt.plot(intp_steps(DFootPower,HS,TO,GS))
+            plt.ylim(-4000,4000)
+            plt.title('Distal Rearfoot Power')
+            
+            plt.subplot(1,3,2)
+            plt.plot(intp_steps(ank_power,HS,TO,GS))
+            plt.ylim(-4000,4000)
+            plt.title('Ankle Power')
+            
+            plt.subplot(1,3,3)
+            plt.plot(COMpower)
+            plt.ylim(-4000,4000)
+            plt.title('COM Power')
+            plt.close()
         
-        # plt.figure()
-        # plt.subplot(1,3,1)
-        # plt.plot(intp_steps(DFootPower,HS,TO,GS))
-        # plt.ylim(-4000,4000)
-        # plt.title('Distal Rearfoot Power')
-        
-        # plt.subplot(1,3,2)
-        # plt.plot(intp_steps(ank_power,HS,TO,GS))
-        # plt.ylim(-4000,4000)
-        # plt.title('Ankle Power')
-        
-        # plt.subplot(1,3,3)
-        # plt.plot(COMpower)
-        # plt.ylim(-4000,4000)
-        # plt.title('COM Power')
-        
-        
-        
-        # plt.close()
-        dum = 0
         
 outcomes = pd.DataFrame({'Subject':list(Subject), 'Config': list(Config), 'SetSpeed': list(SetSpeed), 'SetSlope': list(SetSlope),'NegFootWork': list(NegFootWork),'PosFootWork': list(PosFootWork),
                          'NegAnkWork': list(NegAnkWork),'PosAnkWork': list(PosAnkWork),'NegCOMWork': list(NegCOMWork),'PosCOMWork': list(PosCOMWork)})

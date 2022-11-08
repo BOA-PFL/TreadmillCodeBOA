@@ -5,11 +5,31 @@ Analyze metabolic data with given inputs
 @author: Daniel.Feeney
 """
 
+# Import libraries
 import pandas as pd
 import numpy as np
 import os
 
+# Define functions
 def calcMean2MinEpoch(fullDat, inputMarker):
+    """
+    Function to compute the mean energy consumtion from minute 3 to 5 of the
+    select portion of the trial as indicated by the inputMarker
+
+    Parameters
+    ----------
+    fullDat : dataframe
+        Dataframe that contains all of the metabolic data
+    inputMarker : string
+        String indicating the start of a particular portion of the metabolic
+        trial
+
+    Returns
+    -------
+    (in function form) : float
+        Mean energy consumption
+
+    """
     startTime = fullDat[fullDat['Marker'] == inputMarker].index.tolist()
     td1 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:03:00')
     td2 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:05:00')
@@ -19,6 +39,24 @@ def calcMean2MinEpoch(fullDat, inputMarker):
     
 
 def calcMean3min(fullDat, inputMarker):
+    """
+    Function to compute the mean energy consumtion from minute 3 to 4 of the
+    select portion of the trial as indicated by the inputMarker
+    
+    Parameters
+    ----------
+    fullDat : dataframe
+        Dataframe that contains all of the metabolic data
+    inputMarker : string
+        String indicating the start of a particular portion of the metabolic
+        trial
+    
+    Returns
+    -------
+    (in function form) : float
+        Mean energy consumption
+
+    """
     startTime = fullDat[fullDat['Marker'] == inputMarker].index.tolist()
     td1 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:03:00')
     td2 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:04:00')
@@ -27,6 +65,24 @@ def calcMean3min(fullDat, inputMarker):
     return(np.mean(tp1['EEm']))
 
 def calcMean4min(fullDat, inputMarker):
+    """
+    Function to compute the mean energy consumtion from minute 4 to 5 of the
+    select portion of the trial as indicated by the inputMarker
+    
+    Parameters
+    ----------
+    fullDat : dataframe
+        Dataframe that contains all of the metabolic data
+    inputMarker : string
+        String indicating the start of a particular portion of the metabolic
+        trial
+    
+    Returns
+    -------
+    (in function form) : float
+        Mean energy consumption
+
+    """
     startTime = fullDat[fullDat['Marker'] == inputMarker].index.tolist()
     td1 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:04:00')
     td2 = fullDat['t'][startTime] + pd.to_timedelta('0 days 00:05:00')
@@ -47,6 +103,7 @@ entries = os.listdir(fPath)
 
 configLabels = ['4guide_Start','Single_Start','Nothing_Start']
 
+# Preallocate variables
 met = []
 subject = []
 config = []
@@ -55,6 +112,7 @@ met2 = []
 subject2 = []
 config2 = []
 
+# Index through all files
 for file in entries:
     try:
         fName = file
@@ -105,10 +163,12 @@ for file in entries:
     except:
         print(file)
 
-        
+
+# Compile desired outcomes to a single variable         
 outcomes = pd.DataFrame({'Subject':list(subject),'Config':list(config), 'EE':list(met)})
 
 outcomes.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\Metabolics\\MetResults.csv')#, mode = 'a', header = False)
 
+# Compile desired average outcomes to a single variable  
 outcomes2 = pd.DataFrame({'Subject':list(subject2), 'Config':list(config2), 'EE':list(met2)})
 outcomes2.to_csv('C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL - General\\AgilityPerformanceData\\BOA_InternalStrap_July2021\\Metabolics\\MetResults2.csv')
