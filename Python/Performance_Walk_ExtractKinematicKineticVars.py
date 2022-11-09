@@ -27,6 +27,8 @@ from tkinter import messagebox
 fThresh = 50 #below this value will be set to 0.
 lookFwd = 50
 timeToLoad = 150 #length to look forward for an impact peak
+save_on = 1
+debug = 1
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 
@@ -594,8 +596,7 @@ entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endsw
 if len(entries) > len(entries_footwork):
     print("Warning: Missing Foot Work Files")
 
-save_on = 0
-debug = 1
+
 #______________________________________________________________________________
 #Preallocation
 
@@ -802,7 +803,7 @@ for ii in range(0,len(entries)):
         # Debugging plots:  
         
         if tmpCond == 'Downhill' and debug == 1:
-            makeVizPlotForce(dat, trimmedLandings, GSaw)
+            makeVizPlotForce(dat, trimmedLandings, GS)
             if tmpCond == 'Downhill': 
                 plt.figure(ii)
                 if len(GSfw) > 0:
@@ -842,7 +843,7 @@ for ii in range(0,len(entries)):
                                       
             
             if save_on == 1:
-                outcomes.to_csv(fPath + 'TreadmillOutcomes.csv',header=True)
+                outcomes.to_csv(fPath + 'TreadmillOutcomes.csv',mode = 'a', index = False, header=False)
 
 
 
