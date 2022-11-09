@@ -20,17 +20,30 @@ import scipy
 import scipy.signal as sig
 from scipy.integrate import cumtrapz
 import addcopyfighandler
+from tkinter import messagebox
 
 
 # Define constants and options
 fThresh = 50 #below this value will be set to 0.
 lookFwd = 50
 timeToLoad = 150 #length to look forward for an impact peak
+save_on = 1
+debug = 1
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 
+### set plot font size ###
+SMALL_SIZE = 14
+MEDIUM_SIZE = 16
+BIGGER_SIZE = 18
 
-
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 #______________________________________________________________________________
 # list of functions 
 
@@ -559,20 +572,31 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
     power = power_rot+power_tran
     return power
 
+def makeVizPlotForce(inputDF, inputLeftLandings, goodSteps):
+    plt.subplot(1,3,1)
+    plt.plot(intp_strides(inputDF.Left_GRF_X, inputLeftLandings, goodSteps),'k')
+    plt.ylabel('GRF X (N)')
+    plt.subplot(1,3,2)
+    plt.plot(intp_strides(inputDF.Left_GRF_Y, inputLeftLandings, goodSteps),'k')
+    plt.ylabel('GRF Y (N)')
+    plt.subplot(1,3,3)
+    plt.plot(intp_strides(inputDF.Left_GRF_Z, inputLeftLandings, goodSteps),'k')
+    plt.ylabel('GRF Z (N)')
+    plt.tight_layout()
+    
 #______________________________________________________________________________
 # Read in balance file
-fPath = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+fPath = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
 entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
 
 # Look at the text files from the foot work 
-fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+fPath_footwork = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
 entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
 
 if len(entries) > len(entries_footwork):
     print("Warning: Missing Foot Work Files")
 
-save_on = 0
-debug = 0
+
 #______________________________________________________________________________
 #Preallocation
 
@@ -600,6 +624,7 @@ AnkWork_pos = []
 AnkWork_neg = []
 DisWork = []
 
+badFileList = []
 ## loop through the selected files
 for ii in range(0,len(entries)):
     # try:
@@ -709,7 +734,6 @@ for ii in range(0,len(entries)):
         DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,LGRF,FMOM,speed,landings,takeoffs,0)
         
         
-        # dat = dat.fillna(0)
         # Index through the good steps
         # store good strides for foot work: debugging purposes
         GSfw = []
@@ -776,33 +800,58 @@ for ii in range(0,len(entries)):
                 except:
                     print(trimmedLandings[jj])
         
-        # Debugging plots:
-        if debug == 1:
+        # Debugging plots:  
+        
+        if tmpCond == 'Downhill' and debug == 1:
+            makeVizPlotForce(dat, trimmedLandings, GS)
             if tmpCond == 'Downhill': 
                 plt.figure(ii)
                 if len(GSfw) > 0:
                     plt.subplot(1,2,1)
                     plt.plot(intp_strides(DFootPower,trimmedLandings,GSfw),'k')
                     plt.ylabel('Foot Power [W]')
+                    plt.tight_layout()
                 
                 if len(GSaw) > 0:
                     plt.subplot(1,2,2)
                     plt.plot(intp_strides(dat.RightAnklePower,trimmedLandings,GSaw),'k')
                     plt.ylabel('Ankle Power [W]')
+                    plt.tight_layout()
                 
-                plt.close()
+                    #plt.close()
+            answer = messagebox.askyesno("Question","Is data clean?")
+        
+        if tmpCond == 'Uphill' and debug == 1:
+            makeVizPlotForce(dat, trimmedLandings, GS)
+            answer = messagebox.askyesno("Question","Is data clean?")
+            
+        if answer == False:
+            plt.close('all')
+            print('Adding file to bad file list')
+            badFileList.append(fName)
+            
+        if answer == True:
+            plt.close('all')
+            print('Estimating point estimates')
+            
+        ### Append into DF and Save if save turned on ###
+            outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
+                                     'CT':list(CTs), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
+                                     'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
+                                     'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
+                                     'AnkWork_pos': list(AnkWork_pos), 'AnkWork_neg': list(AnkWork_neg), 'DisWork': list(DisWork)})
+                                      
+            
+            if save_on == 1:
+                  
+                outfileName = fPath + 'TreadmillOutcomes_test.csv'
                 
-
-outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
-                         'CT':list(CTs), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
-                         'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
-                         'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
-                         'AnkWork_pos': list(AnkWork_pos), 'AnkWork_neg': list(AnkWork_neg), 'DisWork': list(DisWork)})
-                          
-
-if save_on == 1:
-    outcomes.to_csv(fPath + 'TreadmillOutcomes.csv',header=True)
-
-
-
+                if os.path.exists(outfileName) == False:
+                    
+                    outcomes.to_csv(outfileName, mode='a', header=True, index = False)
+                
+                else:
+                    outcomes.to_csv(outfileName, mode='a', header=False, index = False) 
+                
+                
 
