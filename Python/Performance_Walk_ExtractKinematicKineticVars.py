@@ -843,8 +843,15 @@ for ii in range(0,len(entries)):
                                       
             
             if save_on == 1:
-                outcomes.to_csv(fPath + 'TreadmillOutcomes.csv',mode = 'a', index = False, header=False)
-
-
-
+                  
+                outfileName = fPath + 'TreadmillOutcomes_test.csv'
+                
+                if os.path.exists(outfileName) == False:
+                    
+                    outcomes.to_csv(outfileName, mode='a', header=True, index = False)
+                
+                else:
+                    outcomes.to_csv(outfileName, mode='a', header=False, index = False) 
+                
+                
 
