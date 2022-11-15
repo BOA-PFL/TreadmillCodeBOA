@@ -500,6 +500,7 @@ DisWork = []
 badFileList = []
 
 ## loop through the selected files
+   
 for ii in range(0,len(entries)):
     # try:
         #fName = entries[0]
