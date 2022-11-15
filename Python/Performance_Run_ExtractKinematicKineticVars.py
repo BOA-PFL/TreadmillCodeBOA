@@ -306,39 +306,7 @@ def trimTakeoffs(landingVec, takeoffVec):
         return(takeoffVec)
     
     # preallocate matrix for force and fill in with force data
-def forceMatrix(inputForce, landings, noSteps, stepLength):
-    """
-    Create a matrix that contains the clipped ground reaction force based on
-    initial contact (or could be another variable)
 
-    Parameters
-    ----------
-    inputForce : list
-        Input variable that is of interest
-    landings : list
-        initial contact indices
-    noSteps : int
-        desired number of steps to examine
-    stepLength : int
-        Length (of frames) of interest
-
-    Returns
-    -------
-    preForce : numpy array
-        Input data segmented into similar length steps
-
-    """
-    #input a force signal, return matrix with n rows (for each landing) by m col
-    #for each point in stepLen.
-    preForce = np.zeros((noSteps,stepLength))
-    
-    for iterVar, landing in enumerate(landings):
-        try:
-            preForce[iterVar,] = inputForce[landing:landing+stepLength]
-        except:
-            print(landing)
-            
-    return preForce
 
 def intp_strides(var,landings,GS):
     """
@@ -605,6 +573,7 @@ AnkWork_neg = []
 DisWork = []
 
 ## loop through the selected files
+   
 for ii in range(0,len(entries)):
     # try:
         #fName = entries[0]
