@@ -29,8 +29,6 @@ timeToLoad = 150 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 
-
-
 #______________________________________________________________________________
 # list of functions 
 
@@ -562,6 +560,7 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
 #______________________________________________________________________________
 # Read in general treadmill data file
 fPath = 'C:/Users/Kate.Harrison/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
+#fPath = 'C:/Users/daniel.feeney/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
 entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
 
 # Look at the text files from the foot work 
@@ -648,6 +647,9 @@ for ii in range(0,len(entries)):
         mass = pd.read_csv(fPath+fName,sep='\t',usecols=[0], nrows=1, skiprows= 6, header = None)
         mass = mass.values.tolist()
         mass = mass[0][0]
+        if type(mass) != float:
+            print('inserting 70 kg as mass - may be wrong')
+            mass = 70
             
         # Open the treadmill data
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
