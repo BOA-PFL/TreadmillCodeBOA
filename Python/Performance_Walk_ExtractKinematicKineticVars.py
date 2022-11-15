@@ -849,9 +849,10 @@ for ii in range(0,len(entries)):
                 if os.path.exists(outfileName) == False:
                     
                     outcomes.to_csv(outfileName, mode='a', header=True, index = False)
+                    badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = True, index = False)
                 
                 else:
                     outcomes.to_csv(outfileName, mode='a', header=False, index = False) 
-                
+                    badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = False, index = False)
                 
 
