@@ -314,7 +314,7 @@ def COMPower_Work_run(GRF,speed,slope,HS,TO,GoodStrides,freq):
     
     COM_power_store = np.zeros((101,len(GoodStrides)))
     # Index through the good strides for computing COM Power + Work
-    for cc,jj in enumerate(GoodStrides):
+    for cc,jj in enumerate(GoodStrides[:-1]):
         acc_step = acc[HS[jj]:TO[jj],:]
         time_step = np.array(range(len(acc_step)))/freq
         com_vel = cumtrapz(acc_step,time_step,initial=0,axis=0)
@@ -427,14 +427,13 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
 
 #______________________________________________________________________________
 # Read in general treadmill data file
-# fPath = 'C:/Users/Kate.Harrison/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
-fPath = 'C:/Users/daniel.feeney/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
+fPath = 'C:/Users/eric.honert/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPDMech_ForefootFit_July2022/Treadmill/'
 entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
 
 # Look at the text files from the foot work 
 
 
-save_on = 1
+save_on = 0
 debug = 1 #this must be set to 1 on the first pass at the data
 
 kinematics = 0
