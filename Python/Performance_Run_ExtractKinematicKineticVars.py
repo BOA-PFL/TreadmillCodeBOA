@@ -27,23 +27,9 @@ from tkinter import messagebox
 fThresh = 50 #below this value will be set to 0.
 lookFwd = 50
 timeToLoad = 150 #length to look forward for an impact peak
-save_on = 1
-debug = 1
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 
-### set plot font size ###
-SMALL_SIZE = 14
-MEDIUM_SIZE = 16
-BIGGER_SIZE = 18
-
-plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
-plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 #______________________________________________________________________________
 # list of functions 
 
@@ -153,54 +139,6 @@ def calcVLR(force, startVal, lengthFwd, endLoading, sampFrq):
         
     return(VLR)
     
-def calcPeakBrake(force, landing, length):
-    """
-    Compute the maximum breaking (A/P) force during locomotion.
-
-    Parameters
-    ----------
-    force : list
-        A/P ground reaction force
-    landing : int
-        the landing (foot contact) of the step/stride of interest
-    length : int
-        number of indices to look forward for computing the maximum breaking
-        force
-
-    Returns
-    -------
-    minimum of the force (in a function): list
-
-    """
-    newForce = np.array(force)
-    return min(newForce[landing:landing+length])
-
-def findNextZero(force, length):
-    """
-    Find the zero-crossing in the A/P ground reaction force that indicates the 
-    transition from breaking to propulsion
-
-    Parameters
-    ----------
-    force : list
-        A/P ground reaction force that is already segmented from initial
-        contact to take-off
-    length : int
-        number of indices to look forward for the zero-crossing
-
-    Returns
-    -------
-    step : int
-        number of indicies that the zero crossing occurs
-
-    """
-    # Starting at a landing, look forward (after first 45 indices)
-    # to the find the next time the signal goes from - to +
-    for step in range(length):
-        if force[step] <= 0 and force[step + 1] >= 0 and step > 45:
-            break
-    return step
-
 def delimitTrial(inputDF):
     """
     Function to crop the data
@@ -225,33 +163,7 @@ def delimitTrial(inputDF):
     outputDat = inputDF.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
     outputDat = outputDat.reset_index()
     return(outputDat)
-
-def filterForce(inputForce, sampFrq, cutoffFrq):
-    """
-    Low pass filter the input signal
-
-    Parameters
-    ----------
-    inputForce : list
-        Input signal (e.g. vertical force)
-    sampFrq : int
-        sampling frequency
-    cutoffFrq : int
-        low-pass filtering cut-off frequency
-
-    Returns
-    -------
-    filtForce: list
-        the low-pass filtered signal of the "inputForce"
-
-    """
-    # low-pass filter the input force signals
-    #t = np.arange(len(inputForce)) / sampFrq
-    w = cutoffFrq / (sampFrq / 2) # Normalize the frequency
-    b, a = sig.butter(4, w, 'low')
-    filtForce = sig.filtfilt(b, a, inputForce)
-    return(filtForce)
-    
+ 
 def trimForce(ForceVert, threshForce):
     """
     Function to zero the vertical force below a threshold
@@ -320,42 +232,7 @@ def trimTakeoffs(landingVec, takeoffVec):
     else:
         return(takeoffVec)
     
-    # preallocate matrix for force and fill in with force data
-def forceMatrix(inputForce, landings, noSteps, stepLength):
-    """
-    Create a matrix that contains the clipped ground reaction force based on
-    initial contact (or could be another variable)
-
-    Parameters
-    ----------
-    inputForce : list
-        Input variable that is of interest
-    landings : list
-        initial contact indices
-    noSteps : int
-        desired number of steps to examine
-    stepLength : int
-        Length (of frames) of interest
-
-    Returns
-    -------
-    preForce : numpy array
-        Input data segmented into similar length steps
-
-    """
-    #input a force signal, return matrix with n rows (for each landing) by m col
-    #for each point in stepLen.
-    preForce = np.zeros((noSteps,stepLength))
-    
-    for iterVar, landing in enumerate(landings):
-        try:
-            preForce[iterVar,] = inputForce[landing:landing+stepLength]
-        except:
-            print(landing)
-            
-    return preForce
-
-def intp_strides(var,landings,GS):
+def intp_steps(var,fHS,fTO,GS):
     """
     Function to interpolate the variable of interest across a stride
     (from foot contact to subsiquent foot contact) in order to plot the 
@@ -376,12 +253,12 @@ def intp_strides(var,landings,GS):
 
     """
     # Preallocate
-    intp_var = np.zeros((101,len(GS)-1))
+    intp_var = np.zeros((101,len(GS)))
     # Index through the strides
-    for ii in range(len(GS)-1):
-        dum = var[landings[GS[ii]]:landings[GS[ii]+1]]
+    for jj, ii in enumerate(GS):
+        dum = var[fHS[ii]:fTO[ii]+1]
         f = scipy.interpolate.interp1d(np.arange(0,len(dum)),dum)
-        intp_var[:,ii] = f(np.linspace(0,len(dum)-1,101))
+        intp_var[:,jj] = f(np.linspace(0,len(dum)-1,101))
         
     return intp_var
 
@@ -415,23 +292,23 @@ def findPosNegWork(var,freq):
     
     return [pos_work,neg_work]
 
-def COMPower_Work_walking(LGRF,RGRF,slope,walk_speed,HS,GoodStrides,freq):
+def COMPower_Work_run(GRF,speed,slope,HS,TO,GoodStrides,freq):
     """
     This function computes the center-of-mass power and work for the "leading"
     limb (ie the limb that is used to segment the GRFs)
 
     Parameters
     ----------
-    LGRF : numpy array (Nx3)
-        Left foot GRF
-    RGRF : numpy array (Nx3)
-        Right foot GRF
+    GRF : numpy array (Nx3)
+        Ground reaction force
+    speed : float or int
+        running speed
     slope : float or int
         slope of the treadmill
-    walk_speed : float or int
-        velocity of the treadmill
     HS : numpy array (Nx1)
         Heel strike (foot contact) array
+    TO : numpy array (Nx1)
+        Toe-off array
     GoodStrides : numpy array (Nx1)
         Array of good strides
     freq : foat or int
@@ -452,38 +329,39 @@ def COMPower_Work_walking(LGRF,RGRF,slope,walk_speed,HS,GoodStrides,freq):
 
     # First compute the approximate body weight: will need to rotate the
     # ground reaction forces into the inertial coordinate system
-    BM = np.nanmean(LGRF[:,1]*np.sin(slope)+LGRF[:,2]*np.cos(slope)+RGRF[:,1]*np.sin(slope)+RGRF[:,2]*np.cos(slope))/9.81
+    slope = slope*np.pi/180
+    BM = np.nanmean(GRF[:,1]*np.sin(slope*np.pi/180)+GRF[:,2]*np.cos(slope))/9.81
     # Compute the COM acceleration
-    acc = (LGRF+RGRF)/BM - [0,9.81*np.sin(slope),9.81*np.cos(slope)]
+    acc = GRF/BM - [0,9.81*np.sin(slope),9.81*np.cos(slope)]
     
     # Pre-allocate variable space
     CW_pos = []; CW_neg = []
     
-    COM_power_store = np.zeros((101,len(GoodStrides)-1))
+    COM_power_store = np.zeros((101,len(GoodStrides)))
     # Index through the good strides for computing COM Power + Work
-    for cc, jj in enumerate(GoodStrides[:-1]):
-        acc_stride = acc[HS[jj]:HS[jj+1],:]
-        time_stride = np.array(range(len(acc_stride)))/freq
-        com_vel = cumtrapz(acc_stride,time_stride,initial=0,axis=0)
-        com_vel = com_vel - np.mean(com_vel,axis=0) + [0,walk_speed,0]
+    for cc,jj in enumerate(GoodStrides):
+        acc_step = acc[HS[jj]:TO[jj],:]
+        time_step = np.array(range(len(acc_step)))/freq
+        com_vel = cumtrapz(acc_step,time_step,initial=0,axis=0)
+        com_vel = com_vel - np.mean(com_vel,axis=0) + [0,speed,0]
         # COM Power
-        com_power_lead = np.sum(com_vel*LGRF[HS[jj]:HS[jj+1],:],axis=1)
+        com_power = np.sum(com_vel*GRF[HS[jj]:TO[jj],:],axis=1)
         # Compute the positive/negative work
         # Note: this may need to be updated for level ground for collision/push-off work
-        [pos_tmp,neg_temp] = findPosNegWork(com_power_lead,freq)
+        [pos_tmp,neg_temp] = findPosNegWork(com_power,freq)
 
         CW_pos.append(pos_tmp)
         CW_neg.append(neg_temp)
         # Store the time-continous COM curve
-        f = scipy.interpolate.interp1d(np.arange(0,len(com_power_lead)),com_power_lead)
-        COM_power_store[:,cc] = f(np.linspace(0,len(com_power_lead)-1,101))
+        f = scipy.interpolate.interp1d(np.arange(0,len(com_power)),com_power)
+        COM_power_store[:,cc] = f(np.linspace(0,len(com_power)-1,101))
     
     # Debugging tool: examine the time-continous curves    
     if show_COMpower == 1:
         plt.plot(COM_power_store)
         plt.close() # create a breakpoint here for visualizing plots
     
-    return(CW_pos,CW_neg)
+    return(CW_pos,CW_neg,COM_power_store)
 
 def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressure,GRF,FreeMoment,speed,landings,takeoffs,yn_run):
     """
@@ -572,31 +450,26 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
     power = power_rot+power_tran
     return power
 
-def makeVizPlotForce(inputDF, inputLeftLandings, goodSteps):
-    plt.subplot(1,3,1)
-    plt.plot(intp_strides(inputDF.Left_GRF_X, inputLeftLandings, goodSteps),'k')
-    plt.ylabel('GRF X (N)')
-    plt.subplot(1,3,2)
-    plt.plot(intp_strides(inputDF.Left_GRF_Y, inputLeftLandings, goodSteps),'k')
-    plt.ylabel('GRF Y (N)')
-    plt.subplot(1,3,3)
-    plt.plot(intp_strides(inputDF.Left_GRF_Z, inputLeftLandings, goodSteps),'k')
-    plt.ylabel('GRF Z (N)')
-    plt.tight_layout()
-    
 #______________________________________________________________________________
-# Read in balance file
-fPath = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+# Read in general treadmill data file
+# fPath = 'C:/Users/Kate.Harrison/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
+fPath = 'C:/Users/eric.honert/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
 entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
 
 # Look at the text files from the foot work 
-fPath_footwork = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
-entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
-
-if len(entries) > len(entries_footwork):
-    print("Warning: Missing Foot Work Files")
 
 
+save_on = 1
+debug = 1
+
+kinematics = 0
+
+if kinematics == 1:
+    fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+    entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
+
+    if len(entries) > len(entries_footwork):
+        print("Warning: Missing Foot Work Files")
 #______________________________________________________________________________
 #Preallocation
 
@@ -625,9 +498,12 @@ AnkWork_neg = []
 DisWork = []
 
 badFileList = []
+
 ## loop through the selected files
+   
 for ii in range(0,len(entries)):
     # try:
+        #fName = entries[0]
         fName = entries[ii] #Load one file at a time
         print(fName)
         
@@ -641,40 +517,58 @@ for ii in range(0,len(entries)):
             tmpCond = 'Downhill'
             tmpSlope = -10
             # Set the angle of the treadmill
-            ang = 10*np.pi/180
+            ang = 10
             
             
-        else:
+        elif fName.count('UH'):
             speed = 1.2
             tmpCond = 'Uphill'
             tmpSlope = 10
             # Set the angle of the treadmill
-            ang = 10*np.pi/180
+            ang = 10
+            
+        elif fName.count('run'): 
+            speed = 3.0
+            tmpCond = 'Level'
+            tmpSlope = 0
+            ang = 0
+        else:
+            print('Defaulting to 0 Slope and Running Speed of 3.0 m/s')
+            speed = 3.0
+            tmpCond = 'Level'
+            tmpSlope = 0
+            ang = 0
+            
 
         # Extract data frequency
         freq = pd.read_csv(fPath+fName,sep='\t',usecols=[0], nrows=1, skiprows=[0,1], header = 0)
         freq = freq.values.tolist()
         freq = freq[0][0]
-            
+        
         # Open the treadmill data
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
-        # Open the footwork data
-        fwdat = pd.read_csv(fPath_footwork+entries_footwork[ii],sep='\t', skiprows = 8, header = 0)
+        if kinematics == 1: # Open the footwork data
+            fwdat = pd.read_csv(fPath_footwork+entries_footwork[ii],sep='\t', skiprows = 9, header = 0)
         
         # Always check force directions
         if np.mean(dat.Left_GRF_Z) < 0:
             dat.Left_GRF_X = -1 * dat.Left_GRF_X
             dat.Left_GRF_Y = 1 * dat.Left_GRF_Y
             dat.Left_GRF_Z = -1 * dat.Left_GRF_Z
-            dat.Right_GRF_X = -1 * dat.Right_GRF_X
-            dat.Right_GRF_Y = 1 * dat.Right_GRF_Y
-            dat.Right_GRF_Z = -1 * dat.Right_GRF_Z
+            
         else:
             dat.Left_GRF_Y = -1 * dat.Left_GRF_Y
-            dat.Right_GRF_Y = -1 * dat.Right_GRF_Y
-            
+        
+        # Extract subject mass
+        mass = pd.read_csv(fPath+fName,sep='\t',usecols=[0], nrows=1, skiprows= 6, header = None)
+        mass = mass.values.tolist()
+        mass = mass[0][0]
+        if type(mass) != float:
+            print('Mass missing from file! Computing mass from GRFs')
+            mass = np.nanmean(dat.Left_GRF_Z)/9.81
+                
         LGRF = np.array(list(zip(dat.Left_GRF_X,dat.Left_GRF_Y,dat.Left_GRF_Z)))
-        RGRF = np.array(list(zip(dat.Right_GRF_X,dat.Right_GRF_Y,dat.Right_GRF_Z)))
+        
         # Trim the trials to a smaller section and threshold force
         forceDat = dat
         
@@ -718,141 +612,129 @@ for ii in range(0,len(entries)):
         GS = np.array(GS)
         
         # Compute COM work
-        [tmpCW_pos,tmpCW_neg] = COMPower_Work_walking(LGRF,RGRF,ang,speed,trimmedLandings,GS,freq)
+        [tmpCW_pos,tmpCW_neg,debug_COMPW] = COMPower_Work_run(LGRF,speed,ang,trimmedLandings,trimmedTakeoffs,GS,freq)
         COMWork_pos.extend(tmpCW_pos)
         COMWork_neg.extend(tmpCW_neg)
         
-        # Distal foot power computations
-        Foot_Ang_Vel = np.array(list(zip(fwdat.RFootAngVel_X,fwdat.RFootAngVel_Y,fwdat.RFootAngVel_Z)))*(np.pi/180)    
-        Foot_COM_Pos = np.array(list(zip(fwdat.RFootCOMPos_X,fwdat.RFootCOMPos_Y,fwdat.RFootCOMPos_Z)))
-        Foot_COM_Vel = np.array(list(zip(fwdat.RFootCOMVel_X,fwdat.RFootCOMVel_Y,fwdat.RFootCOMVel_Z)))
-        COP = np.array(list(zip(fwdat.COP_X,fwdat.COP_Y,fwdat.COP_Z)))
-        COP = np.nan_to_num(COP,nan=0)
-        FMOM = np.array(list(zip(fwdat.FMOM_X,fwdat.FMOM_Y,fwdat.FMOM_Z)))
-        FMOM = np.nan_to_num(FMOM,nan=0)
-
-        DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,LGRF,FMOM,speed,landings,takeoffs,0)
+        #______________________________________________________________
+        # Debugging: Creation of dialog box for looking where foot contact are accurate
+        answer = True # Defaulting to true: In case "debug" is not used
+        # Debugging plots:
+        if debug == 1:
+            plt.subplot(1,3,1)
+            plt.plot(intp_steps(LGRF[:,1],trimmedLandings,trimmedTakeoffs,GS))
+            plt.ylabel('A/P GRF [N]')
+            plt.xlabel('% Step')
+            
+            plt.subplot(1,3,2)
+            plt.plot(intp_steps(LGRF[:,2],trimmedLandings,trimmedTakeoffs,GS))
+            plt.ylabel('Vertical GRF [N]')
+            plt.xlabel('% Step')
         
-        
-        # Index through the good steps
-        # store good strides for foot work: debugging purposes
-        GSfw = []
-        GSaw = []
-        for jj in GS[:-1]:
-                try:
-                    # Compute force-based metrics
-                    # Loading Rate: used for fit purposes, not injury
-                    VALRs.append(calcVLR(forceZ, trimmedLandings[jj]+1, 150, timeToLoad, freq))
-                    # Contact Time
-                    CTs.append((trimmedTakeoffs[jj] - trimmedLandings[jj])/freq)
-                    # Peak Medial/Lateral forces
-                    PkMed.append(np.max(MForce[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
-                    PkLat.append(np.min(MForce[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
-                    # Braking and Propulsive Force Metrics
-                    brakeImpulse.append( sum(i for i in brakeFilt[trimmedLandings[jj]:trimmedTakeoffs[jj]] if i < 0)/freq ) #sum all negative brake force vals
-                    propImpulse.append( sum(i for i in brakeFilt[trimmedLandings[jj]:trimmedTakeoffs[jj]] if i > 0)/freq ) #sum all positive values
-                    peakBrakeF.append(np.min(brakeFilt[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
-                    
-                    # MoCap+ metrics
-                    # Only for downhill metrics
-                    if tmpCond == 'Downhill':
-                        # Only compute ankle and foot metrics from stable kinematic data
-                        # Peak Ankle Eversion Velocity: Fit Metric
-                        idx20 = round(0.2*(trimmedTakeoffs[jj] - trimmedLandings[jj])) + trimmedLandings[jj]
-                        if sum(np.isnan(dat.RFootPosDetect[trimmedLandings[jj]-20:idx20])) == 0:
-                            pAnkEvVel.append(abs(np.min(dat.RAnkleAngVel_Frontal[trimmedLandings[jj]-20:idx20])))
+            plt.subplot(1,3,3)
+            plt.plot(debug_COMPW)
+            plt.ylabel('COM Power [N]')
+            plt.xlabel('% Step')
+            
+            answer = messagebox.askyesno("Question","Is data clean?")
+            plt.close()
+            if answer == False:
+                print('Adding file to bad file list')
+                badFileList.append(fName)
+            
+        if answer == True:
+            if kinematics == 1:# Distal foot power computations
+                Foot_Ang_Vel = np.array(list(zip(fwdat.RFootAngVel_X,fwdat.RFootAngVel_Y,fwdat.RFootAngVel_Z)))*(np.pi/180)    
+                Foot_COM_Pos = np.array(list(zip(fwdat.RFootCOMPos_X,fwdat.RFootCOMPos_Y,fwdat.RFootCOMPos_Z)))
+                Foot_COM_Vel = np.array(list(zip(fwdat.RFootCOMVel_X,fwdat.RFootCOMVel_Y,fwdat.RFootCOMVel_Z)))
+                COP = np.array(list(zip(fwdat.COP_X,fwdat.COP_Y,fwdat.COP_Z)))
+                COP = np.nan_to_num(COP,nan=0)
+                FMOM = np.array(list(zip(fwdat.FMOM_X,fwdat.FMOM_Y,fwdat.FMOM_Z)))
+                FMOM = np.nan_to_num(FMOM,nan=0)
+    
+                DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,LGRF,FMOM,speed,landings,takeoffs,1)
+            
+            
+            # dat = dat.fillna(0)
+            # Index through the good steps
+            # store good strides for foot work: debugging purposes
+            GSfw = []
+            GSaw = []
+            for jj in GS[:-1]:
+                    try:
+                        # Compute force-based metrics
+                        # Loading Rate: used for fit purposes, not injury
+                        VALRs.append(calcVLR(forceZ, trimmedLandings[jj]+1, 150, timeToLoad, freq))
+                        # Contact Time
+                        CTs.append((trimmedTakeoffs[jj] - trimmedLandings[jj])/freq)
+                        # Peak Medial/Lateral forces
+                        PkMed.append(np.max(MForce[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
+                        PkLat.append(np.min(MForce[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
+                        # Braking and Propulsive Force Metrics
+                        brakeImpulse.append( sum(i for i in brakeFilt[trimmedLandings[jj]:trimmedTakeoffs[jj]] if i < 0)/freq ) #sum all negative brake force vals
+                        propImpulse.append( sum(i for i in brakeFilt[trimmedLandings[jj]:trimmedTakeoffs[jj]] if i > 0)/freq ) #sum all positive values
+                        peakBrakeF.append(np.min(brakeFilt[trimmedLandings[jj]:trimmedTakeoffs[jj]]))
+                        
+                        # MoCap+ metrics
+                        # Only for downhill metrics
+                        if tmpCond != 'Uphill'  and kinematics == 1:
+                            # Only compute ankle and foot metrics from stable kinematic data
+                            # Peak Ankle Eversion Velocity: Fit Metric
+                            idx20 = round(0.2*(trimmedTakeoffs[jj] - trimmedLandings[jj])) + trimmedLandings[jj]
+                            if sum(np.isnan(dat.RFootPosDetect[trimmedLandings[jj]-20:idx20])) == 0:
+                                pAnkEvVel.append(abs(np.min(dat.RAnkleAngVel_Frontal[trimmedLandings[jj]-20:idx20])))
+                            else:
+                                pAnkEvVel.append(np.nan)
+    
+                            if sum(np.isnan(dat.RFootPosDetect[trimmedLandings[jj]:trimmedTakeoffs[jj]])) == 0 and np.max(abs(dat.RightAnklePower[trimmedLandings[jj]:trimmedLandings[jj+1]])) < 2000:
+                                # Ankle Work: Endurance/Health Metric
+                                [pos_tmp,neg_tmp] = findPosNegWork(dat.RightAnklePower[trimmedLandings[jj]:trimmedTakeoffs[jj]],freq)
+                                GSaw.append(jj)
+                                AnkWork_pos.append(pos_tmp)
+                                AnkWork_neg.append(neg_tmp)
+                                # Examine distal rearfoot work
+                                dis_idx = round((trimmedLandings[jj+1]-trimmedLandings[jj])*.20)+trimmedLandings[jj]
+                                if np.max(abs(DFootPower[trimmedLandings[jj]:trimmedLandings[jj+1]])) < 500:
+                                    [pos_tmp,neg_tmp] = findPosNegWork(np.array(DFootPower[trimmedLandings[jj]:dis_idx]),freq)
+                                    DisWork.append(neg_tmp)
+                                    GSfw.append(jj)
+                                else:
+                                    DisWork.append(np.nan)
+                                
+                            else:
+                                
+                                AnkWork_pos.append(np.nan)
+                                AnkWork_neg.append(np.nan)
+                                DisWork.append(np.nan)
+                        # For uphill, forward walking conditions
                         else:
                             pAnkEvVel.append(np.nan)
-
-                        if sum(np.isnan(dat.RFootPosDetect[trimmedLandings[jj]:trimmedTakeoffs[jj]])) == 0 and np.max(abs(dat.RightAnklePower[trimmedLandings[jj]:trimmedLandings[jj+1]])) < 2000:
-                            # Ankle Work: Endurance/Health Metric
-                            [pos_tmp,neg_tmp] = findPosNegWork(dat.RightAnklePower[trimmedLandings[jj]:trimmedTakeoffs[jj]],freq)
-                            GSaw.append(jj)
-                            AnkWork_pos.append(pos_tmp)
-                            AnkWork_neg.append(neg_tmp)
-                            # Examine distal rearfoot work
-                            dis_idx = round((trimmedLandings[jj+1]-trimmedLandings[jj])*.20)+trimmedLandings[jj]
-                            if np.max(abs(DFootPower[trimmedLandings[jj]:trimmedLandings[jj+1]])) < 500:
-                                [pos_tmp,neg_tmp] = findPosNegWork(np.array(DFootPower[trimmedLandings[jj]:dis_idx]),freq)
-                                DisWork.append(neg_tmp)
-                                GSfw.append(jj)
-                            else:
-                                DisWork.append(np.nan)
-                            
-                        else:
-                            
                             AnkWork_pos.append(np.nan)
                             AnkWork_neg.append(np.nan)
                             DisWork.append(np.nan)
-                    # For uphill, forward walking conditions
-                    else:
-                        pAnkEvVel.append(np.nan)
-                        AnkWork_pos.append(np.nan)
-                        AnkWork_neg.append(np.nan)
-                        DisWork.append(np.nan)
-                        
-                    # Append study details
-                    oSub.append(tmpSub)
-                    oConfig.append(tmpConfig)
-                    oSlope.append(tmpSlope)
-                    oSesh.append(1)
-                    oSpeed.append(abs(speed))
-                except:
-                    print(trimmedLandings[jj])
+                            
+                        # Append study details
+                        oSub.append(tmpSub)
+                        oConfig.append(tmpConfig)
+                        oSlope.append(tmpSlope)
+                        oSesh.append(1)
+                        oSpeed.append(abs(speed))
+                    except:
+                        print(trimmedLandings[jj])
         
-        # Debugging plots:  
         
-        if tmpCond == 'Downhill' and debug == 1:
-            makeVizPlotForce(dat, trimmedLandings, GS)
-            if tmpCond == 'Downhill': 
-                plt.figure(ii)
-                if len(GSfw) > 0:
-                    plt.subplot(1,2,1)
-                    plt.plot(intp_strides(DFootPower,trimmedLandings,GSfw),'k')
-                    plt.ylabel('Foot Power [W]')
-                    plt.tight_layout()
                 
-                if len(GSaw) > 0:
-                    plt.subplot(1,2,2)
-                    plt.plot(intp_strides(dat.RightAnklePower,trimmedLandings,GSaw),'k')
-                    plt.ylabel('Ankle Power [W]')
-                    plt.tight_layout()
-                
-                    #plt.close()
-            answer = messagebox.askyesno("Question","Is data clean?")
-        
-        if tmpCond == 'Uphill' and debug == 1:
-            makeVizPlotForce(dat, trimmedLandings, GS)
-            answer = messagebox.askyesno("Question","Is data clean?")
-            
-        if answer == False:
-            plt.close('all')
-            print('Adding file to bad file list')
-            badFileList.append(fName)
-            
-        if answer == True:
-            plt.close('all')
-            print('Estimating point estimates')
-            
-        ### Append into DF and Save if save turned on ###
-            outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
-                                     'CT':list(CTs), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
-                                     'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
-                                     'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
-                                     'AnkWork_pos': list(AnkWork_pos), 'AnkWork_neg': list(AnkWork_neg), 'DisWork': list(DisWork)})
-                                      
-            
-            if save_on == 1:
-                  
-                outfileName = fPath + 'TreadmillOutcomes_test.csv'
-                
-                if os.path.exists(outfileName) == False:
-                    
-                    outcomes.to_csv(outfileName, mode='a', header=True, index = False)
-                    badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = True, index = False)
-                
-                else:
-                    outcomes.to_csv(outfileName, mode='a', header=False, index = False) 
-                    badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = False, index = False)
-                
+
+outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
+                         'CT':list(CTs), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
+                         'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
+                         'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
+                         'AnkWork_pos': list(AnkWork_pos), 'AnkWork_neg': list(AnkWork_neg), 'DisWork': list(DisWork)})
+                          
+
+if save_on == 1:
+    outcomes.to_csv(fPath + 'TreadmillOutcomes.csv',header=True)
+
+
+
 
