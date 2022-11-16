@@ -232,7 +232,14 @@ def trimTakeoffs(landingVec, takeoffVec):
     else:
         return(takeoffVec)
     
+<<<<<<< HEAD
 def intp_steps(var,fHS,fTO,GS):
+=======
+    # preallocate matrix for force and fill in with force data
+
+
+def intp_strides(var,landings,GS):
+>>>>>>> 2d3216e626fe7d50c7a1c00799ceaa989a8ecb7d
     """
     Function to interpolate the variable of interest across a stride
     (from foot contact to subsiquent foot contact) in order to plot the 
@@ -517,7 +524,7 @@ for ii in range(0,len(entries)):
             tmpCond = 'Downhill'
             tmpSlope = -10
             # Set the angle of the treadmill
-            ang = 10
+            ang = 10*np.pi/180
             
             
         elif fName.count('UH'):
@@ -525,7 +532,7 @@ for ii in range(0,len(entries)):
             tmpCond = 'Uphill'
             tmpSlope = 10
             # Set the angle of the treadmill
-            ang = 10
+            ang = 10*np.pi/180
             
         elif fName.count('run'): 
             speed = 3.0
