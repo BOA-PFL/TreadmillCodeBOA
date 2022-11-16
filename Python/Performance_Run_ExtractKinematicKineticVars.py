@@ -13,7 +13,6 @@ fThresh is the force threshold to set force to 0
 
 import pandas as pd
 import numpy as np
-from numpy import cos,sin
 import matplotlib.pyplot as plt
 import os
 import scipy
@@ -139,30 +138,6 @@ def calcVLR(force, startVal, lengthFwd, endLoading, sampFrq):
         
     return(VLR)
     
-def delimitTrial(inputDF):
-    """
-    Function to crop the data
-
-    Parameters
-    ----------
-    inputDF : dataframe
-        Original dataframe
-
-    Returns
-    -------
-    outputDat: dataframe
-        Dataframe that has been cropped based on selection
-
-    """
-    print('Select 2 points: the start and end of the trial')
-    fig, ax = plt.subplots()
-    ax.plot(inputDF.LForceZ, label = 'Left Force')
-    fig.legend()
-    pts = np.asarray(plt.ginput(2, timeout=-1))
-    plt.close()
-    outputDat = inputDF.iloc[int(np.floor(pts[0,0])) : int(np.floor(pts[1,0])),:]
-    outputDat = outputDat.reset_index()
-    return(outputDat)
  
 def trimForce(ForceVert, threshForce):
     """
@@ -453,14 +428,14 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
 #______________________________________________________________________________
 # Read in general treadmill data file
 # fPath = 'C:/Users/Kate.Harrison/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
-fPath = 'C:/Users/eric.honert/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
+fPath = 'C:/Users/daniel.feeney/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPD_TongueLocatedDial_Oct2022/Treadmill/'
 entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
 
 # Look at the text files from the foot work 
 
 
 save_on = 1
-debug = 1
+debug = 1 #this must be set to 1 on the first pass at the data
 
 kinematics = 0
 
@@ -501,10 +476,9 @@ badFileList = []
 
 ## loop through the selected files
    
-for ii in range(0,len(entries)):
+for ii, entry in enumerate(entries):
     # try:
-        #fName = entries[0]
-        fName = entries[ii] #Load one file at a time
+        fName = entry #Load one file at a time
         print(fName)
         
         #Parse file name into subject and configuration: temp names 
@@ -599,15 +573,15 @@ for ii in range(0,len(entries)):
         # Need to eliminate bad strides
         # Assume: that most of the strides are good
         step_time = []
-        for jj in range(len(trimmedLandings)):
-            step_time.append(trimmedTakeoffs[jj]-trimmedLandings[jj])
+        for jj, val in enumerate(trimmedLandings):
+            step_time.append(trimmedTakeoffs[jj] - val)
         
         # Crossover detection: Create a variable for "Good Steps"
         # Note: the last statement is to ensure that steady state walking is 
         # attained for tests where 3 hops are performed.
         GS = []
-        for jj in range(len(trimmedLandings)):
-            if step_time[jj] < np.median(step_time) + 20 and np.min(dat.Right_GRF_Z[trimmedLandings[jj]:trimmedTakeoffs[jj]]) < fThresh and trimmedLandings[jj] > 2000:
+        for jj, val in enumerate(trimmedLandings):
+            if step_time[jj] < np.median(step_time) + 20 and np.min(dat.Right_GRF_Z[val:trimmedTakeoffs[jj]]) < fThresh and val > 2000:
                 GS.append(jj)
         GS = np.array(GS)
         
@@ -655,7 +629,6 @@ for ii in range(0,len(entries)):
                 DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,LGRF,FMOM,speed,landings,takeoffs,1)
             
             
-            # dat = dat.fillna(0)
             # Index through the good steps
             # store good strides for foot work: debugging purposes
             GSfw = []
@@ -663,7 +636,7 @@ for ii in range(0,len(entries)):
             for jj in GS[:-1]:
                     try:
                         # Compute force-based metrics
-                        # Loading Rate: used for fit purposes, not injury
+                        # Loading Rate: used for fit purposes, not injury. Great Easter Egg, Eric
                         VALRs.append(calcVLR(forceZ, trimmedLandings[jj]+1, 150, timeToLoad, freq))
                         # Contact Time
                         CTs.append((trimmedTakeoffs[jj] - trimmedLandings[jj])/freq)
