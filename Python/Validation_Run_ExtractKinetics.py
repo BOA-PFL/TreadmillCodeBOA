@@ -17,14 +17,11 @@ from scipy.fft import fft, fftfreq
 import scipy
 import addcopyfighandler
 from scipy.integrate import cumtrapz
+from tkinter import messagebox
 
 
 # Define constants and options
-run = 1 # Set this to 1 where participant is running on one belt so only the left are detected. 0 for dual belt
-manualTrim = 0  #set this to 1 if you want to manually trim trials with ginput, 0 if you want it auto trimmed (start and end of trial)
 fThresh = 50 #below this value will be set to 0.
-writeData = 0 #will write to spreadsheet if 1 entered
-plottingEnabled = 0 #plots the bottom if 1. No plots if 0
 lookFwd = 50
 timeToLoad = 75 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
@@ -149,9 +146,67 @@ def trimTakeoffs(landingVec, takeoffVec):
         return(takeoffVec)
     else:
         return(takeoffVec)
+
+def calcVLR(force, startVal, lengthFwd, endLoading, sampFrq):
+    """
+    Function to calculate VLR from 80 and 20% of the max value observed in the 
+    first n indices (n defined by lengthFwd).
+
+    Parameters
+    ----------
+    force : list
+        vertical ground reaction force
+    startVal : int
+        The value to start computing the loading rate from. Typically the first
+        index after the landing (foot contact) detection
+    lengthFwd : int
+        Number of indices to examine forward to compute the loading rate
+    endLoading : int
+        set to where an impact peak should have occured if there is one and can 
+        be biased longer so the for loop doesn't error out
+    sampFrq : int
+        sample frequency
+
+    Returns
+    -------
+    VLR
+        vertical loading rate
+
+    """
+    
+    tmpDiff = np.diff(force[startVal:startVal+500])*sampFrq
+    
+    # If there is an impact peak, utilize it to compute the loading rate
+    if next(x for x, val in enumerate( tmpDiff ) 
+                      if val < 0) < endLoading:
+        maxFindex = next(x for x, val in enumerate( tmpDiff ) 
+                      if val < 0)
+        maxF = force[startVal + maxFindex]
+        eightyPctMax = 0.8 * maxF
+        twentyPctMax = 0.2 * maxF
+            # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
+        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+                      if val > eightyPctMax) 
+        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+lengthFwd]) 
+                      if val > twentyPctMax) 
+        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/sampFrq) - (twentyIndex/sampFrq)))
+    
+    # If there is no impact peak, utilize the endLoading to compute the loading rate
+    else:
+        maxF = np.max(force[startVal:startVal+endLoading])
+        eightyPctMax = 0.8 * maxF
+        twentyPctMax = 0.2 * maxF
+        # find indices of 80 and 20 and calc loading rate as diff in force / diff in time (N/s)
+        eightyIndex = next(x for x, val in enumerate(force[startVal:startVal+endLoading]) 
+                          if val > eightyPctMax) 
+        twentyIndex = next(x for x, val in enumerate(force[startVal:startVal+endLoading]) 
+                          if val > twentyPctMax) 
+        VLR = ((eightyPctMax - twentyPctMax) / ((eightyIndex/sampFrq) - (twentyIndex/sampFrq)))
+        
+    return(VLR)
     
 
-def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressure,GRF,FreeMoment,speed,slope,landings,takeoffs,yn_run):
+def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressure,GRF,FreeMoment,speed,landings,takeoffs,yn_run):
     """
     The purpose of this function is to compute the distal segment power -
     commonly applied to the rearfoot to obtain the distal rearfoot power. The
@@ -173,8 +228,6 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
     speed : float
         Treadmill belt speed - can be used as a debugging variable or to set
         the speed of the foot in 3D space. 
-    slope : int or float
-        Slope of the treadmill
     landings : list
         Initial foot contact
     takeoffs : list
@@ -186,8 +239,7 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
         distal rearfoot power
 
     """
-    
-    
+
     if yn_run == 0:
         # Debugging variable to examine foot speed
         debug = 0
@@ -419,21 +471,21 @@ Subject = []
 Config = []
 SetSpeed = []
 SetSlope = []
+
+VALRs = []
+
 NegFootWork = []
 PosFootWork = []
 NegAnkWork = []
 PosAnkWork = []
 PosCOMWork = []
 NegCOMWork = []
+pAnkEvVel = []
+
+badFileList = []
 
 #______________________________________________________________________________
-avgAnkPow = np.zeros((101,len(entries_footwork)))
-avgFootPow = np.zeros((101,len(entries_footwork)))
-
-# when COPx is more negative, that is left foot strike
-## loop through the selected files
-
-for ii in range(139,len(entries_footwork)):
+for ii in range(142,len(entries_footwork)):
     # try:
         
         #_____________________________________________________
@@ -467,21 +519,26 @@ for ii in range(139,len(entries_footwork)):
         forceZ = trimForce(dat, fThresh)
         forceZ = forceZ
         
-        # Find the landings and takeoffs of the FP as vectors
+        # Find the landings and takeoffs of the FP as vectors: this will find all landings
         landings = np.array(findLandings(forceZ))
         takeoffs = np.array(findTakeoffs(forceZ))
         if landings[-1] > takeoffs[-1]:
             landings = landings[:-1]
         
-        # Need to make sure the appropriate foot is close to the ground
+        # Assign signals based on direction of running
         if SlopeTmp[0] == 'n':
             fc_sig = dat.RFootCOMPos_Z
-            foot_drop_sig = dat.RFootPosDetect
+            foot_drop_sig = np.array(dat.RFootPosDetect)
+            shank_drop_sig = np.array(datKin.RShankPosDetect)
             ank_power = datKin.RightAnklePower
+            ank_front_vel = datKin.RAnkleAngVel_Frontal
         elif SlopeTmp[0] == 'p':
             fc_sig = dat.LFootCOMPos_Z
-            foot_drop_sig = dat.LFootPosDetect
+            foot_drop_sig = np.array(dat.LFootPosDetect)
+            shank_drop_sig = np.array(datKin.LShankPosDetect)
             ank_power = datKin.LeftAnklePower
+            ank_front_vel = -datKin.LAnkleAngVel_Frontal
+        # Need to make sure the appropriate foot is close to the ground
         HS = []
         TO = []
         for jj in landings:
@@ -511,10 +568,7 @@ for ii in range(139,len(entries_footwork)):
                 TO = TO[idx]
                 stc = 1
             jj = jj+1
-        
-        
-        
-        
+
         # Fill the nan's with 0 => after the foot contacts have been detected
         dat = dat.fillna(0)
         
@@ -544,15 +598,56 @@ for ii in range(139,len(entries_footwork)):
         
         
         # Compute the distal rearfoot power:
-        DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,GRF,FMOM,beltspeed,0,landings,takeoffs,1)
+        DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,GRF,FMOM,beltspeed,landings,takeoffs,1)
         
         GS = []
         for jj, landing in enumerate(HS):
-            if sum(np.isnan(foot_drop_sig[landing:TO[jj]])) == 0 and np.max(abs(ank_power[landing:TO[jj]])) < 5000 and np.max(abs(DFootPower[landing:TO[jj]])) < 5000:
-                [PW,NW] = findPosNegWork(DFootPower[landing:TO[jj]],200)
+            if sum(np.isnan(foot_drop_sig[landing:TO[jj]])) == 0 and np.max(abs(ank_power[landing:TO[jj]])) < 5000 and np.max(abs(DFootPower[landing:TO[jj]])) < 5000 and sum(np.isnan(shank_drop_sig[landing:TO[jj]])) == 0:
+                GS.append(jj)
+        
+        [PW,NW,COMpower] = COMPower_Work_run(GRF,float(SlopeTmp[1]),HS,TO,GS,beltspeed,200)
+        #______________________________________________________________
+        # Debugging: Creation of dialog box for looking where foot contact are accurate
+        answer = True # Defaulting to true: In case "debug" is not used
+        # Debugging plots:
+        if debug == 1:
+            plt.figure()
+            plt.subplot(1,3,1)
+            plt.plot(intp_steps(DFootPower,HS,TO,GS))
+            plt.xlabel('% Step')
+            plt.title('Distal Rearfoot Power')
+            
+            plt.subplot(1,3,2)
+            plt.plot(intp_steps(ank_power,HS,TO,GS))
+            plt.xlabel('% Step')
+            plt.title('Ankle Power')
+            
+            plt.subplot(1,3,3)
+            plt.plot(COMpower)
+            plt.xlabel('% Step')
+            plt.title('COM Power')
+            answer = messagebox.askyesno("Question","Is data clean?")
+            plt.close()
+            if answer == False:
+                print('Adding file to bad file list')
+                badFileList.append(fName)
+            
+        if answer == True:
+            # Append the COM work
+            PosCOMWork.extend(PW)
+            NegCOMWork.extend(NW)
+            for jj in GS:
+                # Compute force-based metrics
+                # Loading Rate: used for fit purposes, not injury. Great Easter Egg, Eric
+                VALRs.append(calcVLR(GRF[:,2], HS[jj]+1, 150, timeToLoad, 200))
+                # Eversion Velocity
+                idx20 = round(0.2*(TO[jj] - HS[jj])) + HS[jj]
+                pAnkEvVel.append(abs(np.min(ank_front_vel[HS[jj]-20:idx20])))
+                # Compute joint work
+                [PW,NW] = findPosNegWork(DFootPower[HS[jj]:TO[jj]],200)
                 NegFootWork.append(NW)
                 PosFootWork.append(PW)
-                [PW,NW] = findPosNegWork(ank_power[landing:TO[jj]],200)
+                [PW,NW] = findPosNegWork(ank_power[HS[jj]:TO[jj]],200)
                 NegAnkWork.append(NW)
                 PosAnkWork.append(PW)
                 
@@ -560,31 +655,10 @@ for ii in range(139,len(entries_footwork)):
                 Config.append(ConfigTmp)
                 SetSpeed.append(SpeedTmp)
                 SetSlope.append(SlopeTmp)
-                GS.append(jj)
-        
-        [PW,NW,COMpower] = COMPower_Work_run(GRF,float(SlopeTmp[1]),HS,TO,GS,beltspeed,200)
-        PosCOMWork.extend(PW)
-        NegCOMWork.extend(NW)
-        
-        if debug == 1:
-            plt.figure()
-            plt.subplot(1,3,1)
-            plt.plot(intp_steps(DFootPower,HS,TO,GS))
-            plt.ylim(-4000,4000)
-            plt.title('Distal Rearfoot Power')
-            
-            plt.subplot(1,3,2)
-            plt.plot(intp_steps(ank_power,HS,TO,GS))
-            plt.ylim(-4000,4000)
-            plt.title('Ankle Power')
-            
-            plt.subplot(1,3,3)
-            plt.plot(COMpower)
-            plt.ylim(-4000,4000)
-            plt.title('COM Power')
-            plt.close()
         
         
+        
+              
 outcomes = pd.DataFrame({'Subject':list(Subject), 'Config': list(Config), 'SetSpeed': list(SetSpeed), 'SetSlope': list(SetSlope),'NegFootWork': list(NegFootWork),'PosFootWork': list(PosFootWork),
                          'NegAnkWork': list(NegAnkWork),'PosAnkWork': list(PosAnkWork),'NegCOMWork': list(NegCOMWork),'PosCOMWork': list(PosCOMWork)})
 
