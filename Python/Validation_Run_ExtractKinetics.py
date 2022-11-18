@@ -27,6 +27,23 @@ timeToLoad = 75 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 
+#______________________________________________________________________________
+# File management
+
+# load the running speed file for reference
+SubRunSpeed = pd.read_csv('C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabSetSubSpeed.csv')
+
+# Look at the text files from the foot work 
+fPath_footwork = 'C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabData\\TreadmillData\\'
+entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
+# Look at the text files from the rest of the kinematics/kinetics
+fPath_kin = 'C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabData\\TreadmillData\\'
+entries_kin = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('PerformanceTestData_V2.txt')]
+
+#______________________________________________________________________________
+save_on = 0 # Turn to 1 to save outcomes to csv
+debug = 1
+
 
    
 #______________________________________________________________________________    
@@ -447,23 +464,6 @@ def COMPower_Work_run(GRF,slope,HS,TO,GoodStrides,speed,freq):
     return(CW_pos,CW_neg,COM_power_store)
 
 
-
-#______________________________________________________________________________
-# File management
-
-# load the running speed file for reference
-SubRunSpeed = pd.read_csv('C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabSetSubSpeed.csv')
-
-# Look at the text files from the foot work 
-fPath_footwork = 'C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabData\\TreadmillData\\'
-entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
-# Look at the text files from the rest of the kinematics/kinetics
-fPath_kin = 'C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabData\\TreadmillData\\'
-entries_kin = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('PerformanceTestData_V2.txt')]
-
-#______________________________________________________________________________
-save_on = 0 # Turn to 1 to save outcomes to csv
-debug = 1
 
 
 #Preallocate variables for storage
