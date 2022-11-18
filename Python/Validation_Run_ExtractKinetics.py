@@ -485,12 +485,11 @@ pAnkEvVel = []
 badFileList = []
 
 #______________________________________________________________________________
-for ii in range(142,len(entries_footwork)):
+for ii, fName in enumerate(entries_footwork):
     # try:
         
         #_____________________________________________________
         # Load the files associated with the foot power/work
-        fName = entries_footwork[ii] #Load one file at a time
         print(fName)
         
         #Parse file name into subject and configuration 
@@ -602,7 +601,7 @@ for ii in range(142,len(entries_footwork)):
         
         GS = []
         for jj, landing in enumerate(HS):
-            if sum(np.isnan(foot_drop_sig[landing:TO[jj]])) == 0 and np.max(abs(ank_power[landing:TO[jj]])) < 5000 and np.max(abs(DFootPower[landing:TO[jj]])) < 5000 and sum(np.isnan(shank_drop_sig[landing:TO[jj]])) == 0:
+            if sum(np.isnan(foot_drop_sig[landing:TO[jj]])) == 0 and np.max(abs(ank_power[landing:TO[jj]+1])) < 5000 and np.max(abs(DFootPower[landing:TO[jj]+1])) < 5000 and sum(np.isnan(shank_drop_sig[landing:TO[jj]])) == 0:
                 GS.append(jj)
         
         [PW,NW,COMpower] = COMPower_Work_run(GRF,float(SlopeTmp[1]),HS,TO,GS,beltspeed,200)
