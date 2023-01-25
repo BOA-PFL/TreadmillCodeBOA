@@ -394,6 +394,7 @@ def findPosNegWork(var,freq):
     
     return [pos_work,neg_work]
 
+
 def COMPower_Work_run(GRF,slope,HS,TO,GoodStrides,speed,freq):
     """
     This function computes the center-of-mass power and work for the "leading"
