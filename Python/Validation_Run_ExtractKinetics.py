@@ -42,7 +42,7 @@ entries_kin = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('
 
 #______________________________________________________________________________
 save_on = 0 # Turn to 1 to save outcomes to csv
-debug = 1
+debug = 0
 
 
    
@@ -420,6 +420,10 @@ def COMPower_Work_run(GRF,slope,HS,TO,GoodStrides,speed,freq):
         Positive COM work [J]
     CW_neg : list
         Negative COM work [J]
+    COM_power_store : numpy array
+        The time-continuous COM power from each good step
+    BM : float
+        subject body mass from the particular trial
 
     """
     # Compute the COM power using the individual limbs method                
@@ -461,7 +465,7 @@ def COMPower_Work_run(GRF,slope,HS,TO,GoodStrides,speed,freq):
         plt.plot(COM_power_store)
         plt.close() # create a breakpoint here for visualizing plots
     
-    return(CW_pos,CW_neg,COM_power_store)
+    return(CW_pos,CW_neg,COM_power_store,BM)
 
 
 
@@ -471,6 +475,7 @@ Subject = []
 Config = []
 SetSpeed = []
 SetSlope = []
+Sesh = []
 
 VALRs = []
 
@@ -481,15 +486,26 @@ PosAnkWork = []
 PosCOMWork = []
 NegCOMWork = []
 pAnkEvVel = []
+FootConAng = []
+AnkConAng = []
+
+footp4 = np.array([])
+footp2 = np.array([])
+footn6 = np.array([])
+
+ankp4 = np.array([])
+ankp2 = np.array([])
+ankn6 = np.array([])
 
 badFileList = []
 
 #______________________________________________________________________________
-for ii, fName in enumerate(entries_footwork):
+for ii in range(0,len(entries_footwork)):
     # try:
         
         #_____________________________________________________
         # Load the files associated with the foot power/work
+        fName = entries_footwork[ii]
         print(fName)
         
         #Parse file name into subject and configuration 
@@ -497,6 +513,7 @@ for ii, fName in enumerate(entries_footwork):
         ConfigTmp = fName.split(sep = "_")[1]
         SpeedTmp = fName.split(sep = "_")[2]
         SlopeTmp = fName.split(sep = "_")[3]
+        SeshTmp = fName.split(sep = "_")[4][0]
 
         dat = pd.read_csv(fPath_footwork+fName,sep='\t', skiprows = 8, header = 0)
         datKin = pd.read_csv(fPath_kin+entries_kin[ii],sep='\t', skiprows = 8, header = 0)
@@ -531,12 +548,16 @@ for ii, fName in enumerate(entries_footwork):
             shank_drop_sig = np.array(datKin.RShankPosDetect)
             ank_power = datKin.RightAnklePower
             ank_front_vel = datKin.RAnkleAngVel_Frontal
+            foot_ang = datKin.RFootStrikeAngle
+            ank_sag_ang = datKin.RAnkleAngle_Sagittal
         elif SlopeTmp[0] == 'p':
             fc_sig = dat.LFootCOMPos_Z
             foot_drop_sig = np.array(dat.LFootPosDetect)
             shank_drop_sig = np.array(datKin.LShankPosDetect)
             ank_power = datKin.LeftAnklePower
             ank_front_vel = -datKin.LAnkleAngVel_Frontal
+            foot_ang = datKin.RFootStrikeAngle
+            ank_sag_ang = datKin.RAnkleAngle_Sagittal
         # Need to make sure the appropriate foot is close to the ground
         HS = []
         TO = []
@@ -557,7 +578,7 @@ for ii, fName in enumerate(entries_footwork):
         stc = 0 # start trial counter
         jj = 0
         while stc == 0:
-            if approx_CT[jj] < 200:
+            if approx_CT[jj] < 300:
                 jc = jc+1
             if jc >= 1 and approx_CT[jj] > 300:
                 last_jumpHS = landings[jj]
@@ -601,10 +622,10 @@ for ii, fName in enumerate(entries_footwork):
         
         GS = []
         for jj, landing in enumerate(HS):
-            if sum(np.isnan(foot_drop_sig[landing:TO[jj]])) == 0 and np.max(abs(ank_power[landing:TO[jj]+1])) < 5000 and np.max(abs(DFootPower[landing:TO[jj]+1])) < 5000 and sum(np.isnan(shank_drop_sig[landing:TO[jj]])) == 0:
+            if sum(np.isnan(foot_drop_sig[landing:TO[jj]])) == 0 and np.max(abs(ank_power[landing:TO[jj]+1])) < 3000 and np.max(abs(DFootPower[landing:TO[jj]+1])) < 3000 and sum(np.isnan(shank_drop_sig[landing:TO[jj]])) == 0:
                 GS.append(jj)
         
-        [PW,NW,COMpower] = COMPower_Work_run(GRF,float(SlopeTmp[1]),HS,TO,GS,beltspeed,200)
+        [PW,NW,COMpower,mass] = COMPower_Work_run(GRF,float(SlopeTmp[1]),HS,TO,GS,beltspeed,200)       
         #______________________________________________________________
         # Debugging: Creation of dialog box for looking where foot contact are accurate
         answer = True # Defaulting to true: In case "debug" is not used
@@ -642,6 +663,9 @@ for ii, fName in enumerate(entries_footwork):
                 # Eversion Velocity
                 idx20 = round(0.2*(TO[jj] - HS[jj])) + HS[jj]
                 pAnkEvVel.append(abs(np.min(ank_front_vel[HS[jj]-20:idx20])))
+                # Look at what's going on with the ankle and foot at contact
+                FootConAng.append(foot_ang[HS[jj]])
+                AnkConAng.append(ank_sag_ang[HS[jj]])
                 # Compute joint work
                 [PW,NW] = findPosNegWork(DFootPower[HS[jj]:TO[jj]],200)
                 NegFootWork.append(NW)
@@ -652,17 +676,62 @@ for ii, fName in enumerate(entries_footwork):
                 
                 Subject.append(SubjectTmp)
                 Config.append(ConfigTmp)
-                SetSpeed.append(SpeedTmp)
+                SetSpeed.append(abs(beltspeed))
                 SetSlope.append(SlopeTmp)
-        
-        
+                Sesh.append(SeshTmp)
+    
+        # Store the strides for later plotting
+        if SpeedTmp == 'ss' and SlopeTmp == 'n6':
+            footn6 = np.append(footn6,np.nanmean(intp_steps(DFootPower,HS,TO,GS),axis=1)/mass)
+            ankn6 = np.append(ankn6,np.nanmean(intp_steps(ank_power,HS,TO,GS),axis=1)/mass)
+        elif SpeedTmp == 'ss' and SlopeTmp == 'p4':
+            footp4 = np.append(footp4,np.nanmean(intp_steps(DFootPower,HS,TO,GS),axis=1)/mass)
+            ankp4 = np.append(ankp4,np.nanmean(intp_steps(ank_power,HS,TO,GS),axis=1)/mass)
+        elif SpeedTmp == 'ss' and SlopeTmp == 'p2':
+            footp2 = np.append(footp2,np.nanmean(intp_steps(DFootPower,HS,TO,GS),axis=1)/mass)
+            ankp2 = np.append(ankp2,np.nanmean(intp_steps(ank_power,HS,TO,GS),axis=1)/mass)
+
+
+footn6 = np.reshape(footn6,[int(len(footn6)/101),101])       
+ankn6 = np.reshape(ankn6,[int(len(ankn6)/101),101])
+
+footp2 = np.reshape(footp2,[int(len(footp2)/101),101])     
+ankp2 = np.reshape(ankp2,[int(len(ankp2)/101),101]) 
+
+footp4 = np.reshape(footp4,[int(len(footp4)/101),101])     
+ankp4 = np.reshape(ankp4,[int(len(ankp4)/101),101])     
         
               
-outcomes = pd.DataFrame({'Subject':list(Subject), 'Config': list(Config), 'SetSpeed': list(SetSpeed), 'SetSlope': list(SetSlope),'NegFootWork': list(NegFootWork),'PosFootWork': list(PosFootWork),
-                         'NegAnkWork': list(NegAnkWork),'PosAnkWork': list(PosAnkWork),'NegCOMWork': list(NegCOMWork),'PosCOMWork': list(PosCOMWork)})
+outcomes = pd.DataFrame({'Subject':list(Subject), 'Config': list(Config), 'SetSpeed': list(SetSpeed), 'SetSlope': list(SetSlope), 'Sesh': list(Sesh),'NegFootWork': list(NegFootWork),'PosFootWork': list(PosFootWork),
+                         'NegAnkWork': list(NegAnkWork),'PosAnkWork': list(PosAnkWork),'NegCOMWork': list(NegCOMWork),'PosCOMWork': list(PosCOMWork), 'pAnkEvVel': list(pAnkEvVel), 'VALR': list(VALRs),
+                         'FootConAng': list(FootConAng), 'AnkConAng': list(AnkConAng)})
 
 if save_on == 1:
     outcomes.to_csv('C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabData\\AnkleFootWork.csv',header=True)
 elif save_on == 2: 
     outcomes.to_csv('C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabData\\AnkleFootWork.csv', mode = 'a', header=False)
+
+
+
+# Plotting
+
+plt.figure
+plt.subplot(1,2,1)
+plt.plot(np.mean(footn6,axis=0))
+plt.plot(np.mean(footp2,axis=0))
+plt.plot(np.mean(footp4,axis=0))
+plt.xlim([0,100])
+plt.ylim([-15,15])
+plt.legend(['n6','p2','p4'])
+plt.title('Distal Rearfoot')
+
+plt.subplot(1,2,2)
+plt.plot(np.mean(ankn6,axis=0))
+plt.plot(np.mean(ankp2,axis=0))
+plt.plot(np.mean(ankp4,axis=0))
+plt.xlim([0,100])
+plt.ylim([-15,15])
+plt.title('Ankle')
+
+
 
