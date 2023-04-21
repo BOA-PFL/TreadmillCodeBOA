@@ -21,13 +21,31 @@ from scipy.integrate import cumtrapz
 import addcopyfighandler
 from tkinter import messagebox
 
-
+#______________________________________________________________________________
 # Define constants and options
 fThresh = 50 #below this value will be set to 0.
 lookFwd = 50
 timeToLoad = 150 #length to look forward for an impact peak
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
+# Read in general treadmill data file
+fPath = 'C:/Users/eric.honert/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/AS_Trail_HeelLockAgility_Perf_Apr23/Treadmill/'
+entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
+
+# Look at the text files from the foot work 
+
+
+save_on = 0
+debug = 1 #this must be set to 1 on the first pass at the data
+
+kinematics = 0
+
+if kinematics == 1:
+    fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+    entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
+
+    if len(entries) > len(entries_footwork):
+        print("Warning: Missing Foot Work Files")
 
 #______________________________________________________________________________
 # list of functions 
@@ -312,7 +330,7 @@ def COMPower_Work_run(GRF,speed,slope,HS,TO,GoodStrides,freq):
     # Pre-allocate variable space
     CW_pos = []; CW_neg = []
     
-    COM_power_store = np.zeros((101,len(GoodStrides)))
+    COM_power_store = np.zeros((101,len(GoodStrides)-1))
     # Index through the good strides for computing COM Power + Work
     for cc,jj in enumerate(GoodStrides[:-1]):
         acc_step = acc[HS[jj]:TO[jj],:]
@@ -425,26 +443,7 @@ def dist_seg_power_treadmill(Seg_COM_Pos,Seg_COM_Vel,Seg_Ang_Vel,CenterOfPressur
     power = power_rot+power_tran
     return power
 
-#______________________________________________________________________________
-# Read in general treadmill data file
-fPath = 'C:/Users/eric.honert/Boa Technology Inc/PFL Team - General/Testing Segments/AgilityPerformanceData/CPDMech_ForefootFit_July2022/Treadmill/'
-entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
 
-# Look at the text files from the foot work 
-
-
-save_on = 0
-debug = 1 #this must be set to 1 on the first pass at the data
-
-kinematics = 0
-
-if kinematics == 1:
-    fPath_footwork = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
-    entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
-
-    if len(entries) > len(entries_footwork):
-        print("Warning: Missing Foot Work Files")
-#______________________________________________________________________________
 #Preallocation
 
 # Study Details:
