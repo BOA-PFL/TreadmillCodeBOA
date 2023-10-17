@@ -29,6 +29,7 @@ print('Open all wattbike/power files recorded for the subject')
 # Initiate storing variables
 config = []
 subName = []
+trial = []
 steadyPower = []
 steadyCadence = []
 steadySym = []
@@ -97,6 +98,7 @@ for fName in entries:
 
       subName.append(fName.split('_')[0])
       config.append(fName.split('_')[1])
+      trial.append(fName.split('_')[2].split('.')[0])
 
     
     except:
@@ -105,7 +107,7 @@ for fName in entries:
 
 
 # Combine outcomes and export to csv
-outcomes = pd.DataFrame({'Subject':list(subName), 'Config': list(config),'Power_steady':steadyPower, 'Cadence_steady': steadyCadence, 
+outcomes = pd.DataFrame({'Subject':list(subName), 'Config': list(config), 'Trial':list(trial), 'Power_steady':steadyPower, 'Cadence_steady': steadyCadence, 
                             'Power_sprint':sprintMax, 'Cadence_sprint':cadenceMax})  
 
 outfileName = fPath + 'CompiledPowerData.csv'
