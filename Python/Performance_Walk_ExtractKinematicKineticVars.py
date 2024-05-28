@@ -23,6 +23,24 @@ import addcopyfighandler
 from tkinter import messagebox
 
 
+
+fPath = 'C:\\Users\\bethany.kilpatrick\\Boa Technology Inc\\PFL - General\\Testing Segments\\Hike\\EH_Hike_MidcutSD_Mech_April2024\\Treadmill\\'
+entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
+
+# Look at the text files from the foot work 
+# fPath_footwork = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+# entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
+
+# if len(entries) > len(entries_footwork):
+#     print("Warning: Missing Foot Work Files")
+
+
+
+
+
+
+
+
 # Define constants and options
 fThresh = 50 #below this value will be set to 0.
 lookFwd = 50
@@ -448,7 +466,7 @@ def COMPower_Work_walking(LGRF,RGRF,slope,walk_speed,HS,GoodStrides,freq):
     # Compute the COM power using the individual limbs method                
     
     # Debugging tool: Showing the time-continuous COM power
-    show_COMpower = 0
+    show_COMpower = 1
 
     # First compute the approximate body weight: will need to rotate the
     # ground reaction forces into the inertial coordinate system
@@ -586,15 +604,15 @@ def makeVizPlotForce(inputDF, inputLeftLandings, goodSteps):
     
 #______________________________________________________________________________
 # Read in balance file
-fPath = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
-entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
+# fPath = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+# entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
 
-# Look at the text files from the foot work 
-fPath_footwork = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
-entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
+# # Look at the text files from the foot work 
+# fPath_footwork = 'C:\\Users\\daniel.feeney\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Hike\\FocusAnkleDualDial_Midcut_Sept2022\\Treadmill\\'
+# entries_footwork = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('DistalRearfootPower.txt')]
 
-if len(entries) > len(entries_footwork):
-    print("Warning: Missing Foot Work Files")
+# if len(entries) > len(entries_footwork):
+#     print("Warning: Missing Foot Work Files")
 
 
 #______________________________________________________________________________
@@ -626,7 +644,7 @@ DisWork = []
 
 badFileList = []
 ## loop through the selected files
-for ii in range(0,len(entries)):
+for ii in range(len(entries)):
     # try:
         fName = entries[ii] #Load one file at a time
         print(fName)
@@ -659,7 +677,7 @@ for ii in range(0,len(entries)):
         # Open the treadmill data
         dat = pd.read_csv(fPath+fName,sep='\t', skiprows = 8, header = 0)
         # Open the footwork data
-        fwdat = pd.read_csv(fPath_footwork+entries_footwork[ii],sep='\t', skiprows = 8, header = 0)
+        # fwdat = pd.read_csv(fPath_footwork+entries_footwork[ii],sep='\t', skiprows = 8, header = 0)
         
         # Always check force directions
         if np.mean(dat.Left_GRF_Z) < 0:
@@ -723,15 +741,15 @@ for ii in range(0,len(entries)):
         COMWork_neg.extend(tmpCW_neg)
         
         # Distal foot power computations
-        Foot_Ang_Vel = np.array(list(zip(fwdat.RFootAngVel_X,fwdat.RFootAngVel_Y,fwdat.RFootAngVel_Z)))*(np.pi/180)    
-        Foot_COM_Pos = np.array(list(zip(fwdat.RFootCOMPos_X,fwdat.RFootCOMPos_Y,fwdat.RFootCOMPos_Z)))
-        Foot_COM_Vel = np.array(list(zip(fwdat.RFootCOMVel_X,fwdat.RFootCOMVel_Y,fwdat.RFootCOMVel_Z)))
-        COP = np.array(list(zip(fwdat.COP_X,fwdat.COP_Y,fwdat.COP_Z)))
-        COP = np.nan_to_num(COP,nan=0)
-        FMOM = np.array(list(zip(fwdat.FMOM_X,fwdat.FMOM_Y,fwdat.FMOM_Z)))
-        FMOM = np.nan_to_num(FMOM,nan=0)
+        # Foot_Ang_Vel = np.array(list(zip(fwdat.RFootAngVel_X,fwdat.RFootAngVel_Y,fwdat.RFootAngVel_Z)))*(np.pi/180)    
+        # Foot_COM_Pos = np.array(list(zip(fwdat.RFootCOMPos_X,fwdat.RFootCOMPos_Y,fwdat.RFootCOMPos_Z)))
+        # Foot_COM_Vel = np.array(list(zip(fwdat.RFootCOMVel_X,fwdat.RFootCOMVel_Y,fwdat.RFootCOMVel_Z)))
+        # COP = np.array(list(zip(fwdat.COP_X,fwdat.COP_Y,fwdat.COP_Z)))
+        # COP = np.nan_to_num(COP,nan=0)
+        # FMOM = np.array(list(zip(fwdat.FMOM_X,fwdat.FMOM_Y,fwdat.FMOM_Z)))
+        # FMOM = np.nan_to_num(FMOM,nan=0)
 
-        DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,LGRF,FMOM,speed,landings,takeoffs,0)
+        # DFootPower = dist_seg_power_treadmill(Foot_COM_Pos,Foot_COM_Vel,Foot_Ang_Vel,COP,LGRF,FMOM,speed,landings,takeoffs,0)
         
         
         # Index through the good steps
@@ -772,12 +790,12 @@ for ii in range(0,len(entries)):
                             AnkWork_neg.append(neg_tmp)
                             # Examine distal rearfoot work
                             dis_idx = round((trimmedLandings[jj+1]-trimmedLandings[jj])*.20)+trimmedLandings[jj]
-                            if np.max(abs(DFootPower[trimmedLandings[jj]:trimmedLandings[jj+1]])) < 500:
-                                [pos_tmp,neg_tmp] = findPosNegWork(np.array(DFootPower[trimmedLandings[jj]:dis_idx]),freq)
-                                DisWork.append(neg_tmp)
-                                GSfw.append(jj)
-                            else:
-                                DisWork.append(np.nan)
+                            # if np.max(abs(DFootPower[trimmedLandings[jj]:trimmedLandings[jj+1]])) < 500:
+                            #     [pos_tmp,neg_tmp] = findPosNegWork(np.array(DFootPower[trimmedLandings[jj]:dis_idx]),freq)
+                            #     DisWork.append(neg_tmp)
+                            #     GSfw.append(jj)
+                            # else:
+                            #     DisWork.append(np.nan)
                             
                         else:
                             
@@ -808,7 +826,7 @@ for ii in range(0,len(entries)):
                 plt.figure(ii)
                 if len(GSfw) > 0:
                     plt.subplot(1,2,1)
-                    plt.plot(intp_strides(DFootPower,trimmedLandings,GSfw),'k')
+                    plt.plot(intp_strides(COMPower_Work_walking,trimmedLandings,GSfw),'k')
                     plt.ylabel('Foot Power [W]')
                     plt.tight_layout()
                 
@@ -818,8 +836,8 @@ for ii in range(0,len(entries)):
                     plt.ylabel('Ankle Power [W]')
                     plt.tight_layout()
                 
-                    #plt.close()
-            answer = messagebox.askyesno("Question","Is data clean?")
+                    plt.close()
+        answer = messagebox.askyesno("Question","Is data clean?")
         
         if tmpCond == 'Uphill' and debug == 1:
             makeVizPlotForce(dat, trimmedLandings, GS)
@@ -835,24 +853,25 @@ for ii in range(0,len(entries)):
             print('Estimating point estimates')
             
         ### Append into DF and Save if save turned on ###
-            outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
+outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
                                      'CT':list(CTs), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
                                      'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
-                                     'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
-                                     'AnkWork_pos': list(AnkWork_pos), 'AnkWork_neg': list(AnkWork_neg), 'DisWork': list(DisWork)})
+                                     'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg)})
+                                      # 'AnkWork_pos': list(AnkWork_pos), 'AnkWork_neg': list(AnkWork_neg), 'DisWork': list(DisWork)
+                                          
                                       
             
-            if save_on == 1:
-                  
-                outfileName = fPath + 'TreadmillOutcomes_test.csv'
-                
-                if os.path.exists(outfileName) == False:
-                    
-                    outcomes.to_csv(outfileName, mode='a', header=True, index = False)
-                    badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = True, index = False)
-                
-                else:
-                    outcomes.to_csv(outfileName, mode='a', header=False, index = False) 
-                    badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = False, index = False)
-                
+if save_on == 1:
+    outfileName = fPath + '0_TreadmillOutcomes_test.csv'
+    outcomes.to_csv(outfileName, index = False)
+    
+    # if os.path.exists(outfileName) == False:
+        
+    #     outcomes.to_csv(outfileName, mode='a', header=True, index = False)
+    #     badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = True, index = False)
+    
+    # else:
+    #     outcomes.to_csv(outfileName, mode='a', header=False, index = False) 
+    #     badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = False, index = False)
+    
 
