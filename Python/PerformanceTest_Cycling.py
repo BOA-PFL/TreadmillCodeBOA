@@ -9,6 +9,15 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from tkinter import messagebox 
+
+
+
+import scipy
+import scipy.interpolate
+from scipy.integrate import cumtrapz
+import scipy.signal as sig
+import addcopyfighandler
 
 # Note on plotting
 # If plotting results in an error use the command:
@@ -19,7 +28,7 @@ import os
 meter = 0 ### Specify which power meter you used. WattBike == 0, Garmin == 1
 
 # Ensure that the file path contains YOUR NAME (e.g. bethany.kilpatrick)
-fPath = 'C:/Users/eric.honert/Boa Technology Inc/PFL Team - General/Cycling Performance Tests/Cycling_4guideSD_Feb2022/Wattbike Data/'
+fPath = 'C:\\Users\\bethany.kilpatrick\\Boa Technology Inc\\PFL - General\\Testing Segments\\Cycling Performance Tests\\PP_CyclingUpperStiffnessII_May2024\\Wattbike\\'
 fileExt = r".csv"
 entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
 
@@ -44,17 +53,24 @@ for fName in entries:
     # If the loop is not able accomplished, "try" will skip the file
     try:   
         
+      # fName = entries[1]  
       dat = pd.read_csv(fPath+fName, header = 0)
-    # This is for renaming columns that come from the Watt Bike Monitor. You may also need
-    # to adjust this for units in the names as well
-    
-    # dat = dat.rename(columns={'Cadence ':'Cadence', 'Speed ':'Speed',
-    #    'Distance ':'Distance','Force ':'Force','Power ': 'Power'})
 
+    
       # Create time-continuous power figure to select regions of interest
       plt.figure()
       plt.plot(dat.power)
-    
+      plt.ylabel('Power [Watt]')
+      plt.xlabel('Time [sec]')
+      plt.title(fName.split('.csv')[0])
+       
+      saveFolder = fPath + 'PowerPlots'
+       
+      if os.path.exists(saveFolder) == False:
+          os.mkdir(saveFolder) 
+                 
+      plt.savefig(saveFolder + '/' + fName.split('.csv')[0] +'.png')
+      
       print('click the start of as many steady state periods are recorded in the file. Press enter when done')
       steadyStart = plt.ginput(-1)
     
@@ -110,6 +126,6 @@ for fName in entries:
 outcomes = pd.DataFrame({'Subject':list(subName), 'Config': list(config), 'Trial':list(trial), 'Power_steady':steadyPower, 'Cadence_steady': steadyCadence, 
                             'Power_sprint':sprintMax, 'Cadence_sprint':cadenceMax})  
 
-outfileName = fPath + 'CompiledPowerData.csv'
-outcomes.to_csv(outfileName, index = False)
+# outfileName = fPath + '0_CompiledPowerData.csv'
+# outcomes.to_csv(outfileName, index = False, mode  = 'a')
 
