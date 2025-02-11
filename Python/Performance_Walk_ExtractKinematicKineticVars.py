@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import os
 import scipy
 import scipy.signal as sig
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 import addcopyfighandler
 from tkinter import messagebox
 
@@ -482,7 +482,7 @@ def COMPower_Work_walking(LGRF,RGRF,slope,walk_speed,HS,GoodStrides,freq):
     for cc, jj in enumerate(GoodStrides[:-1]):
         acc_stride = acc[HS[jj]:HS[jj+1],:]
         time_stride = np.array(range(len(acc_stride)))/freq
-        com_vel = cumtrapz(acc_stride,time_stride,initial=0,axis=0)
+        com_vel = cumulative_trapezoid(acc_stride,time_stride,initial=0,axis=0)
         com_vel = com_vel - np.mean(com_vel,axis=0) + [0,walk_speed,0]
         # COM Power
         com_power_lead = np.sum(com_vel*LGRF[HS[jj]:HS[jj+1],:],axis=1)
@@ -652,6 +652,7 @@ for ii in range(len(entries)):
         #Parse file name into subject and configuration: temp names 
         tmpSub = fName.split(sep = "_")[0]
         tmpConfig = fName.split(sep = "_")[1]
+        tmpOrder = fName.split(sep = "_")[3][0]
         
         # Dictate the slope and the direction of walking
         if fName.count('DH'):
@@ -813,7 +814,7 @@ for ii in range(len(entries)):
                     oSub.append(tmpSub)
                     oConfig.append(tmpConfig)
                     oSlope.append(tmpSlope)
-                    oSesh.append(1)
+                    oSesh.append(tmpOrder)
                     oSpeed.append(abs(speed))
                 except:
                     print(trimmedLandings[jj])
@@ -822,22 +823,22 @@ for ii in range(len(entries)):
         
         if tmpCond == 'Downhill' and debug == 1:
             makeVizPlotForce(dat, trimmedLandings, GS)
-            if tmpCond == 'Downhill': 
-                plt.figure(ii)
-                if len(GSfw) > 0:
-                    plt.subplot(1,2,1)
-                    plt.plot(intp_strides(COMPower_Work_walking,trimmedLandings,GSfw),'k')
-                    plt.ylabel('Foot Power [W]')
-                    plt.tight_layout()
+            # if tmpCond == 'Downhill': 
+            #     plt.figure(ii)
+            #     if len(GSfw) > 0:
+            #         plt.subplot(1,2,1)
+            #         plt.plot(intp_strides(COMPower_Work_walking,trimmedLandings,GSfw),'k')
+            #         plt.ylabel('Foot Power [W]')
+            #         plt.tight_layout()
                 
-                if len(GSaw) > 0:
-                    plt.subplot(1,2,2)
-                    plt.plot(intp_strides(dat.RightAnklePower,trimmedLandings,GSaw),'k')
-                    plt.ylabel('Ankle Power [W]')
-                    plt.tight_layout()
+            #     if len(GSaw) > 0:
+            #         plt.subplot(1,2,2)
+            #         plt.plot(intp_strides(dat.RightAnklePower,trimmedLandings,GSaw),'k')
+            #         plt.ylabel('Ankle Power [W]')
+            #         plt.tight_layout()
                 
-                    plt.close()
-        answer = messagebox.askyesno("Question","Is data clean?")
+            #         plt.close()
+            answer = messagebox.askyesno("Question","Is data clean?")
         
         if tmpCond == 'Uphill' and debug == 1:
             makeVizPlotForce(dat, trimmedLandings, GS)
@@ -850,7 +851,7 @@ for ii in range(len(entries)):
             
         if answer == True:
             plt.close('all')
-            print('Estimating point estimates')
+            print('Estimating point estimates \n')
             
         ### Append into DF and Save if save turned on ###
 outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
