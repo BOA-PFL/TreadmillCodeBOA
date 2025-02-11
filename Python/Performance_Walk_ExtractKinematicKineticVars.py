@@ -850,6 +850,10 @@ for ii in range(len(entries)):
             badFileList.append(fName)
             
         if answer == True:
+            saveFolder = fPath + 'TreadmillPlots'
+            if os.path.exists(saveFolder) == False:
+              os.mkdir(saveFolder) 
+            plt.savefig(saveFolder + '/' + fName.split('.csv')[0] +'.png')
             plt.close('all')
             print('Estimating point estimates \n')
             
