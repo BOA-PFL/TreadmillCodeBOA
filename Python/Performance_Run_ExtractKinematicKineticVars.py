@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import os
 import scipy
 import scipy.signal as sig
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid as cumtrapz
 import addcopyfighandler
 from tkinter import messagebox
 
@@ -482,6 +482,7 @@ for ii, entry in enumerate(entries):
         #Parse file name into subject and configuration: temp names 
         tmpSub = fName.split(sep = "_")[0]
         tmpConfig = fName.split(sep = "_")[1]
+        tmpOrd = fName.split(sep = "_")[3].split(sep = ' ')[0]
         
         # Dictate the slope and the direction of walking
         if fName.count('DH'):
@@ -688,7 +689,7 @@ for ii, entry in enumerate(entries):
                         oSub.append(tmpSub)
                         oConfig.append(tmpConfig)
                         oSlope.append(tmpSlope)
-                        oSesh.append(1)
+                        oSesh.append(tmpOrd)
                         oSpeed.append(abs(speed))
                     except:
                         print(trimmedLandings[jj])
@@ -696,7 +697,7 @@ for ii, entry in enumerate(entries):
         
                 
 
-outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Sesh': list(oSesh),
+outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Order': list(oSesh),
                          'CT':list(CTs), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
                          'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
                          'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
