@@ -610,12 +610,19 @@ for ii, entry in enumerate(entries):
             plt.xlabel('% Step')
             
             answer = messagebox.askyesno("Question","Is data clean?")
-            plt.close()
+            
             if answer == False:
                 print('Adding file to bad file list')
                 badFileList.append(fName)
+                plt.close()
             
         if answer == True:
+            saveFolder = fPath + 'TreadmillPlots'
+            if os.path.exists(saveFolder) == False:
+              os.mkdir(saveFolder) 
+            plt.savefig(saveFolder + '/' + fName.split('.csv')[0] +'.png')
+            plt.close()
+            
             if kinematics == 1:# Distal foot power computations
                 Foot_Ang_Vel = np.array(list(zip(fwdat.RFootAngVel_X,fwdat.RFootAngVel_Y,fwdat.RFootAngVel_Z)))*(np.pi/180)    
                 Foot_COM_Pos = np.array(list(zip(fwdat.RFootCOMPos_X,fwdat.RFootCOMPos_Y,fwdat.RFootCOMPos_Z)))
