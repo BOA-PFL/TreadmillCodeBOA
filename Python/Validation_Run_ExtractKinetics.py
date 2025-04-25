@@ -41,7 +41,7 @@ fPath_kin = 'C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Test
 entries_kin = [fName for fName in os.listdir(fPath_footwork) if fName.endswith('PerformanceTestData_V2.txt')]
 
 #______________________________________________________________________________
-save_on = 0 # Turn to 1 to save outcomes to csv
+save_on = 1 # Turn to 1 to save outcomes to csv
 debug = 0
 
 
@@ -489,6 +489,9 @@ pAnkEvVel = []
 FootConAng = []
 AnkConAng = []
 
+MaxFootPower = []
+MinFootPower = []
+
 footp4 = np.array([])
 footp2 = np.array([])
 footn6 = np.array([])
@@ -496,6 +499,19 @@ footn6 = np.array([])
 ankp4 = np.array([])
 ankp2 = np.array([])
 ankn6 = np.array([])
+
+pfs_foot = np.array([])
+lace_foot = np.array([])
+sock_foot = np.array([])
+
+pfs_footang = np.array([]) 
+lace_footang = np.array([])
+sock_footang = np.array([])
+
+pfs_ankang = np.array([])
+lace_ankang = np.array([])
+sock_ankang = np.array([])
+
 
 badFileList = []
 
@@ -556,8 +572,8 @@ for ii in range(0,len(entries_footwork)):
             shank_drop_sig = np.array(datKin.LShankPosDetect)
             ank_power = datKin.LeftAnklePower
             ank_front_vel = -datKin.LAnkleAngVel_Frontal
-            foot_ang = datKin.RFootStrikeAngle
-            ank_sag_ang = datKin.RAnkleAngle_Sagittal
+            foot_ang = datKin.LFootStrikeangle
+            ank_sag_ang = datKin.LAnkleAngle_Sagittal
         # Need to make sure the appropriate foot is close to the ground
         HS = []
         TO = []
@@ -666,6 +682,9 @@ for ii in range(0,len(entries_footwork)):
                 # Look at what's going on with the ankle and foot at contact
                 FootConAng.append(foot_ang[HS[jj]])
                 AnkConAng.append(ank_sag_ang[HS[jj]])
+                # Max, min foot
+                MaxFootPower.append(max(DFootPower[HS[jj]:TO[jj]]))
+                MinFootPower.append(min(DFootPower[HS[jj]:TO[jj]]))
                 # Compute joint work
                 [PW,NW] = findPosNegWork(DFootPower[HS[jj]:TO[jj]],200)
                 NegFootWork.append(NW)
@@ -690,6 +709,20 @@ for ii in range(0,len(entries_footwork)):
         elif SpeedTmp == 'ss' and SlopeTmp == 'p2':
             footp2 = np.append(footp2,np.nanmean(intp_steps(DFootPower,HS,TO,GS),axis=1)/mass)
             ankp2 = np.append(ankp2,np.nanmean(intp_steps(ank_power,HS,TO,GS),axis=1)/mass)
+        
+        if SpeedTmp == 'ss' and SlopeTmp == 'n6' and ConfigTmp == 'pfs':
+            pfs_foot = np.append(pfs_foot,np.nanmean(intp_steps(DFootPower,HS,TO,GS),axis=1)/mass)
+            pfs_footang = np.append(pfs_footang,np.nanmean(intp_steps(foot_ang,HS,TO,GS),axis=1))
+            pfs_ankang = np.append(pfs_ankang,np.nanmean(intp_steps(ank_sag_ang,HS,TO,GS),axis=1))
+        elif SpeedTmp == 'ss' and SlopeTmp == 'n6' and ConfigTmp == 'lace':
+            lace_foot = np.append(lace_foot,np.nanmean(intp_steps(DFootPower,HS,TO,GS),axis=1)/mass)
+            lace_footang = np.append(lace_footang,np.nanmean(intp_steps(foot_ang,HS,TO,GS),axis=1))
+            lace_ankang = np.append(lace_ankang,np.nanmean(intp_steps(ank_sag_ang,HS,TO,GS),axis=1))
+        elif SpeedTmp == 'ss' and SlopeTmp == 'n6' and ConfigTmp == 'sock':
+            sock_foot = np.append(sock_foot,np.nanmean(intp_steps(DFootPower,HS,TO,GS),axis=1)/mass)
+            sock_footang = np.append(sock_footang,np.nanmean(intp_steps(foot_ang,HS,TO,GS),axis=1))
+            sock_ankang = np.append(sock_ankang,np.nanmean(intp_steps(ank_sag_ang,HS,TO,GS),axis=1))
+        
 
 
 footn6 = np.reshape(footn6,[int(len(footn6)/101),101])       
@@ -699,12 +732,23 @@ footp2 = np.reshape(footp2,[int(len(footp2)/101),101])
 ankp2 = np.reshape(ankp2,[int(len(ankp2)/101),101]) 
 
 footp4 = np.reshape(footp4,[int(len(footp4)/101),101])     
-ankp4 = np.reshape(ankp4,[int(len(ankp4)/101),101])     
-        
+ankp4 = np.reshape(ankp4,[int(len(ankp4)/101),101])
+
+pfs_foot = np.reshape(pfs_foot,[int(len(pfs_foot)/101),101]) 
+lace_foot = np.reshape(lace_foot,[int(len(lace_foot)/101),101])
+sock_foot = np.reshape(sock_foot,[int(len(sock_foot)/101),101]) 
+
+pfs_footang = np.reshape(pfs_footang,[int(len(pfs_footang)/101),101]) 
+lace_footang = np.reshape(lace_footang,[int(len(lace_footang)/101),101])
+sock_footang = np.reshape(sock_footang,[int(len(sock_footang)/101),101]) 
+
+pfs_ankang = np.reshape(pfs_ankang,[int(len(pfs_ankang)/101),101]) 
+lace_ankang = np.reshape(lace_ankang,[int(len(lace_ankang)/101),101])
+sock_ankang = np.reshape(sock_ankang,[int(len(sock_ankang)/101),101])       
               
 outcomes = pd.DataFrame({'Subject':list(Subject), 'Config': list(Config), 'SetSpeed': list(SetSpeed), 'SetSlope': list(SetSlope), 'Sesh': list(Sesh),'NegFootWork': list(NegFootWork),'PosFootWork': list(PosFootWork),
                          'NegAnkWork': list(NegAnkWork),'PosAnkWork': list(PosAnkWork),'NegCOMWork': list(NegCOMWork),'PosCOMWork': list(PosCOMWork), 'pAnkEvVel': list(pAnkEvVel), 'VALR': list(VALRs),
-                         'FootConAng': list(FootConAng), 'AnkConAng': list(AnkConAng)})
+                         'FootConAng': list(FootConAng), 'AnkConAng': list(AnkConAng),'MaxFootPower': list(MaxFootPower), 'MinFootPower': list(MinFootPower)})
 
 if save_on == 1:
     outcomes.to_csv('C:\\Users\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\EndurancePerformance\\TrailRun_2022\\InLabData\\AnkleFootWork.csv',header=True)
@@ -714,7 +758,6 @@ elif save_on == 2:
 
 
 # Plotting
-
 plt.figure
 plt.subplot(1,2,1)
 plt.plot(np.mean(footn6,axis=0))
@@ -733,5 +776,31 @@ plt.xlim([0,100])
 plt.ylim([-15,15])
 plt.title('Ankle')
 
+plt.figure
+plt.plot(np.mean(footn6,axis=0))
+plt.plot(np.mean(footp2,axis=0))
+plt.plot(np.mean(footp4,axis=0))
+plt.xlim([0,100])
+# plt.ylim([-15,10])
+plt.legend(['n6','p2','p4'])
+plt.title('Distal Rearfoot')
+
+plt.figure(10)
+plt.plot(np.mean(pfs_foot,axis=0))
+plt.plot(np.mean(lace_foot,axis=0))
+plt.plot(np.mean(sock_foot,axis=0))
+plt.legend(['pfs','lace','sock'])
+
+plt.figure(11)
+plt.plot(np.mean(pfs_footang,axis=0))
+plt.plot(np.mean(lace_footang,axis=0))
+plt.plot(np.mean(sock_footang,axis=0))
+plt.legend(['pfs','lace','sock'])
+
+plt.figure(12)
+plt.plot(np.mean(pfs_ankang,axis=0))
+plt.plot(np.mean(lace_ankang,axis=0))
+plt.plot(np.mean(sock_ankang,axis=0))
+plt.legend(['pfs','lace','sock'])
 
 
