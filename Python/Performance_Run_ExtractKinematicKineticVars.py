@@ -532,13 +532,8 @@ for ii, entry in enumerate(entries):
         else:
             dat.Left_GRF_Y = -1 * dat.Left_GRF_Y
         
-        # Extract subject mass
-        mass = pd.read_csv(fPath+fName,sep='\t',usecols=[0], nrows=1, skiprows= 6, header = None)
-        mass = mass.values.tolist()
-        mass = mass[0][0]
-        if type(mass) != float:
-            print('Mass missing from file! Computing mass from GRFs')
-            mass = np.nanmean(dat.Left_GRF_Z)/9.81
+        # Extract subject mass from forces
+        mass = np.nanmean(dat.Left_GRF_Z)/9.81
                 
         LGRF = np.array(list(zip(dat.Left_GRF_X,dat.Left_GRF_Y,dat.Left_GRF_Z)))
         
