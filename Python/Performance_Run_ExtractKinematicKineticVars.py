@@ -322,9 +322,21 @@ for ii, entry in enumerate(entries):
         # Note: the last statement is to ensure that steady state running is
         # attained: the athlete is often getting up to speed during the first
         # 20 seconds of the trial, so those steps are disregarded.
+        # Note: some trials are exported without the right force plate (all
+        # NaN). The crossover check cannot be performed for these trials, so
+        # rely on the stride checks below (a crossover onto the right belt
+        # shows up as a missing contact on the left force plate).
+        RFP_avail = dat.Right_GRF_Z.isna().all() == False
+        if RFP_avail == False:
+            print('Right force plate data not available: crossover check not performed')
+
         good_step = np.zeros(len(trimmedLandings),dtype=bool)
         for jj, val in enumerate(trimmedLandings):
-            if step_time[jj] < np.median(step_time) + 20 and np.min(dat.Right_GRF_Z[val:trimmedTakeoffs[jj]]) < fThresh and val > steady_time*freq:
+            if RFP_avail:
+                no_crossover = np.min(dat.Right_GRF_Z[val:trimmedTakeoffs[jj]]) < fThresh
+            else:
+                no_crossover = True
+            if step_time[jj] < np.median(step_time) + 20 and no_crossover and val > steady_time*freq:
                 good_step[jj] = True
 
         #______________________________________________________________
