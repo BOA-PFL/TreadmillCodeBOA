@@ -7,8 +7,23 @@ at the top.
 manualTrim = 1 means you want to plot each force time series 
 and select when the trial starts and ends
 plottingEnabled will show a plot for each iteration (not recommended)
-fThresh is the force threshold to set force to 0 
+fThresh is the force threshold to set force to 0
 @author: Daniel.Feeney
+
+Notes:
+    Updated 10/2026 (E. Honert): COM work is also output per meter
+    (COMWork_pos_dis, COMWork_neg_dis [J/m] = stride work / stride distance;
+    stride distance = stride time x belt speed). On a treadmill at a set
+    speed, a configuration that lengthens the stride does more work per
+    stride but covers more distance, so J/m (cost of transport) is the
+    preferred energy efficiency metric. Body mass (Mass) is output to
+    compute J/kg/m.
+
+    Left/right segmentation uses the best available signal: left knee
+    flexion, LFootPosDetect, left toe height, then the M/L impulse (no motion
+    capture). The M/L impulse agreed with the motion capture signals in only
+    ~70% of the 2026 trials, but as every step is analyzed once (as the lead
+    limb of its stride), a flipped side label does not change the work values.
 """
 
 import pandas as pd
@@ -29,6 +44,7 @@ fThresh = 50 #below this value will be set to 0.
 lookFwd = 50
 timeToLoad = 150 #length to look forward for an impact peak
 steady_time = 20 #time at the start of the trial to disregard while the athlete gets up to speed [sec]
+avail_thresh = 0.5 #fraction of non-NaN samples required to use a motion capture signal for L/R
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 # Read in general treadmill data file
@@ -191,6 +207,60 @@ def COMPower_Work_run(GRF,speed,slope,LHS,LTO,RHS,RTO,LGS,RGS,freq):
 
     return(LCW_pos,LCW_neg,RCW_pos,RCW_neg,LCOM_power_store,RCOM_power_store)
 
+def neighbour_diff(var):
+    """
+    Compare each step's value to the average of its neighbouring steps. This
+    removes slow drift and offsets in the signal so that the alternating
+    left/right pattern remains.
+
+    Parameters
+    ----------
+    var : numpy array
+        Value of the signal for each step (e.g. at mid-stance)
+
+    Returns
+    -------
+    var_nb : numpy array
+        Step value minus the mean of the neighbouring steps
+
+    """
+    # Preallocate
+    var_nb = np.zeros(len(var))
+    for jj in range(1,len(var)-1):
+        var_nb[jj] = var[jj] - (var[jj-1] + var[jj+1])/2
+    var_nb[0] = var[0] - var[1]; var_nb[-1] = var[-1] - var[-2]
+
+    return(var_nb)
+
+def LR_vote(right_step, valid, even_step):
+    """
+    Majority vote of whether the even steps are right steps.
+
+    Parameters
+    ----------
+    right_step : numpy array (bool)
+        True when the signal indicates that the step is a right step
+    valid : numpy array (bool)
+        Steps to include in the vote (good steps with a finite signal)
+    even_step : numpy array (bool)
+        True for the even numbered steps
+
+    Returns
+    -------
+    vote : float
+        Fraction of the valid steps where an even step = right step. NaN if
+        there are no valid steps.
+
+    """
+    agree = right_step == even_step
+    agree = agree[valid]
+    if len(agree) == 0:
+        vote = np.nan
+    else:
+        vote = np.mean(agree)
+
+    return(vote)
+
 
 #Preallocation
 
@@ -200,7 +270,9 @@ oConfig = []
 oSlope = []
 oSesh = []
 oSpeed = []
+oMass = []
 Side = []
+oLRmethod = []
 
 # Force Plate Variables
 CTs = []
@@ -280,10 +352,15 @@ for ii, entry in enumerate(entries):
         else:
             dat.Left_GRF_Y = -1 * dat.Left_GRF_Y
         
-        # Extract subject mass from forces
-        mass = np.nanmean(dat.Left_GRF_Z)/9.81
-                
         LGRF = np.array(list(zip(dat.Left_GRF_X,dat.Left_GRF_Y,dat.Left_GRF_Z)))
+
+        # Extract subject mass from forces: during steady running the average
+        # vertical GRF equals body weight (plus the shoe mass). Only use the
+        # steady state portion of the trial.
+        # Note: average Mass across a subject's trials before normalizing (J/kg/m)
+        # so that the shoe mass does not introduce a configuration effect
+        steady_GRFz = LGRF[int(steady_time*freq):,2]
+        mass = np.nanmean(steady_GRFz)/9.81
         
         # Trim the trials to a smaller section and threshold force
         forceDat = dat
@@ -353,10 +430,7 @@ for ii, entry in enumerate(entries):
         # with a narrow step width, and an M/L force offset biases every step
         # towards one side. Compare each step to the average of its
         # neighbouring steps to remove the offset/drift.
-        ML_nb = np.zeros(len(ML_imp))
-        for jj in range(1,len(ML_imp)-1):
-            ML_nb[jj] = ML_imp[jj] - (ML_imp[jj-1] + ML_imp[jj+1])/2
-        ML_nb[0] = ML_imp[0] - ML_imp[1]; ML_nb[-1] = ML_imp[-1] - ML_imp[-2]
+        ML_nb = neighbour_diff(ML_imp)
 
         # Note: for downhill (backwards walking) the participant faces the
         # opposite direction on the treadmill, so the M/L sign flips with
@@ -369,21 +443,77 @@ for ii, entry in enumerate(entries):
         # Running on a single force plate: foot contacts strictly alternate
         # (checked on the 2025 Kailas data: no missed contacts in 40 trials).
         # Assign sides by alternation and use a majority vote of the good
-        # steps' M/L impulses to decide whether the even steps are right or left.
-        even_step = np.arange(len(ML_nb_body)) % 2 == 0
-        vote_even_right = (ML_nb_body < 0) == even_step
-        vote_even_right = vote_even_right[good_step]
-        vote_margin = np.mean(vote_even_right)
+        # steps to decide whether the even steps are right or left. Each
+        # signal is sampled at mid-stance and compared to the neighbouring
+        # steps to remove offsets/drift.
+        mid_stance = (trimmedLandings + trimmedTakeoffs)//2
+        even_step = np.arange(len(trimmedLandings)) % 2 == 0
+
+        ML_valid = good_step & np.isfinite(ML_nb_body)
+        vote_ML = LR_vote(ML_nb_body < 0, ML_valid, even_step)
+
+        # 1: Left knee sagittal angle. Flexion is negative in this export, so
+        # the left knee is less flexed (higher) in left stance than in
+        # mid-swing (right stance). Right = lower than neighbours. Note: this
+        # gave a 95-100% vote margin on the StokoII trials with knee data.
+        vote_knee = np.nan
+        if 'LKneeAngle_Sagittal' in dat.columns:
+            LKneeSag = np.array(dat.LKneeAngle_Sagittal)
+            if np.mean(np.isfinite(LKneeSag)) > avail_thresh:
+                KS_nb = neighbour_diff(LKneeSag[mid_stance])
+                KS_valid = good_step & np.isfinite(KS_nb)
+                vote_knee = LR_vote(KS_nb < 0, KS_valid, even_step)
+
+        # 2: Left foot position: the left foot is on the plate when
+        # LFootPosDetect is at a local maximum (agreed with the knee flexion
+        # on all 59 StokoII trials with both). Right = lower than neighbours.
+        vote_foot = np.nan
+        if 'LFootPosDetect' in dat.columns:
+            LFootPos = np.array(dat.LFootPosDetect)
+            if np.mean(np.isfinite(LFootPos)) > avail_thresh:
+                FP_nb = neighbour_diff(LFootPos[mid_stance])
+                FP_valid = good_step & np.isfinite(FP_nb)
+                vote_foot = LR_vote(FP_nb < 0, FP_valid, even_step)
+
+        # 3: Left toe vertical position (e.g. Speedland export): the left toe
+        # is on the belt (low) during left stance and in swing (high) during
+        # right stance. Right = higher than neighbours.
+        vote_toe = np.nan
+        if 'LeftToeZPosition' in dat.columns:
+            LToeZ = np.array(dat.LeftToeZPosition)
+            if np.mean(np.isfinite(LToeZ)) > avail_thresh:
+                TZ_nb = neighbour_diff(LToeZ[mid_stance])
+                TZ_valid = good_step & np.isfinite(TZ_nb)
+                vote_toe = LR_vote(TZ_nb > 0, TZ_valid, even_step)
+
+        # Use the best available signal: 4: the M/L impulse if there is no
+        # motion capture
+        if np.isfinite(vote_knee):
+            LR_method = 'KneeFlex'
+            vote_margin = vote_knee
+            LR_nb = KS_nb
+        elif np.isfinite(vote_foot):
+            LR_method = 'FootPos'
+            vote_margin = vote_foot
+            LR_nb = FP_nb
+        elif np.isfinite(vote_toe):
+            LR_method = 'ToeZ'
+            vote_margin = vote_toe
+            LR_nb = -TZ_nb
+        else:
+            LR_method = 'ML'
+            vote_margin = vote_ML
+            LR_nb = ML_nb_body
 
         step_side = []
-        for jj in range(len(ML_nb_body)):
+        for jj in range(len(trimmedLandings)):
             if even_step[jj] == (vote_margin > 0.5):
                 step_side.append('Right')
             else:
                 step_side.append('Left')
         step_side = np.array(step_side)
         # A vote margin close to 50% means that the side assignment is uncertain
-        print('L/R vote margin: ' + str(round(max(vote_margin,1-vote_margin)*100,1)) + '%')
+        print('L/R method: ' + LR_method + ', vote margin: ' + str(round(max(vote_margin,1-vote_margin)*100,1)) + '%')
 
         L_idx = np.where(step_side == 'Left')[0]
         R_idx = np.where(step_side == 'Right')[0]
@@ -439,13 +569,14 @@ for ii, entry in enumerate(entries):
             plt.ylabel('COM Power [W]')
             plt.xlabel('% Stride')
 
-            # Check the left/right segmentation: most left steps should sit
-            # above zero and most right steps below zero
+            # Check the left/right segmentation with the signal used for the
+            # vote: most left steps should sit above zero and most right
+            # steps below zero
             plt.subplot(1,4,4)
-            plt.plot(L_idx,ML_nb[L_idx],'ko')
-            plt.plot(R_idx,ML_nb[R_idx],'ro')
+            plt.plot(L_idx,LR_nb[L_idx],'ko')
+            plt.plot(R_idx,LR_nb[R_idx],'ro')
             plt.axhline(0,color='gray')
-            plt.ylabel('M/L Impulse - Neighbours [N*s]')
+            plt.ylabel(LR_method + ' - Neighbours')
             plt.xlabel('Step #')
             plt.tight_layout()
 
@@ -464,36 +595,24 @@ for ii, entry in enumerate(entries):
             plt.close()
 
             # Index through the left good strides
-            # Note: every value for a stride is computed before any list is
-            # appended so that an exception cannot misalign the output rows
             for cc, jj in enumerate(LGS):
                     try:
                         # Compute force-based metrics
                         # Loading Rate: used for fit purposes, not injury. Great Easter Egg, Eric
-                        tmpVALR = calcVLR(forceZ, LHS[jj]+1, 150, timeToLoad, freq)
+                        VALRs.append(calcVLR(forceZ, LHS[jj]+1, 150, timeToLoad, freq))
                         # Contact Time
-                        tmpCT = (LTO[jj] - LHS[jj])/freq
+                        CTs.append((LTO[jj] - LHS[jj])/freq)
                         # Stride time and distance: foot contact to the
                         # subsequent foot contact of the same foot
-                        tmpStrideTime = (LHS[jj+1] - LHS[jj])/freq
-                        tmpStrideDist = tmpStrideTime*abs(speed)
+                        StrideTime.append((LHS[jj+1] - LHS[jj])/freq)
+                        StrideDist.append((LHS[jj+1] - LHS[jj])/freq*abs(speed))
                         # Peak Medial/Lateral forces
-                        tmpPkMed = np.max(MForce[LHS[jj]:LTO[jj]])
-                        tmpPkLat = np.min(MForce[LHS[jj]:LTO[jj]])
+                        PkMed.append(np.max(MForce[LHS[jj]:LTO[jj]]))
+                        PkLat.append(np.min(MForce[LHS[jj]:LTO[jj]]))
                         # Braking and Propulsive Force Metrics
-                        tmpBrakeImp = sum(i for i in brakeFilt[LHS[jj]:LTO[jj]] if i < 0)/freq #sum all negative brake force vals
-                        tmpPropImp = sum(i for i in brakeFilt[LHS[jj]:LTO[jj]] if i > 0)/freq #sum all positive values
-                        tmpPkBrake = np.min(brakeFilt[LHS[jj]:LTO[jj]])
-
-                        VALRs.append(tmpVALR)
-                        CTs.append(tmpCT)
-                        StrideTime.append(tmpStrideTime)
-                        StrideDist.append(tmpStrideDist)
-                        PkMed.append(tmpPkMed)
-                        PkLat.append(tmpPkLat)
-                        brakeImpulse.append(tmpBrakeImp)
-                        propImpulse.append(tmpPropImp)
-                        peakBrakeF.append(tmpPkBrake)
+                        brakeImpulse.append(sum(i for i in brakeFilt[LHS[jj]:LTO[jj]] if i < 0)/freq) #sum all negative brake force vals
+                        propImpulse.append(sum(i for i in brakeFilt[LHS[jj]:LTO[jj]] if i > 0)/freq) #sum all positive values
+                        peakBrakeF.append(np.min(brakeFilt[LHS[jj]:LTO[jj]]))
                         COMWork_pos.append(LCW_pos[cc])
                         COMWork_neg.append(LCW_neg[cc])
 
@@ -508,7 +627,9 @@ for ii, entry in enumerate(entries):
                         oSlope.append(tmpSlope)
                         oSesh.append(tmpOrd)
                         oSpeed.append(abs(speed))
+                        oMass.append(mass)
                         Side.append('Left')
+                        oLRmethod.append(LR_method)
                     except:
                         print(LHS[jj])
 
@@ -516,25 +637,15 @@ for ii, entry in enumerate(entries):
             for cc, jj in enumerate(RGS):
                     try:
                         # Compute force-based metrics
-                        tmpVALR = calcVLR(forceZ, RHS[jj]+1, 150, timeToLoad, freq)
-                        tmpCT = (RTO[jj] - RHS[jj])/freq
-                        tmpStrideTime = (RHS[jj+1] - RHS[jj])/freq
-                        tmpStrideDist = tmpStrideTime*abs(speed)
-                        tmpPkMed = np.max(MForce[RHS[jj]:RTO[jj]])
-                        tmpPkLat = np.min(MForce[RHS[jj]:RTO[jj]])
-                        tmpBrakeImp = sum(i for i in brakeFilt[RHS[jj]:RTO[jj]] if i < 0)/freq
-                        tmpPropImp = sum(i for i in brakeFilt[RHS[jj]:RTO[jj]] if i > 0)/freq
-                        tmpPkBrake = np.min(brakeFilt[RHS[jj]:RTO[jj]])
-
-                        VALRs.append(tmpVALR)
-                        CTs.append(tmpCT)
-                        StrideTime.append(tmpStrideTime)
-                        StrideDist.append(tmpStrideDist)
-                        PkMed.append(tmpPkMed)
-                        PkLat.append(tmpPkLat)
-                        brakeImpulse.append(tmpBrakeImp)
-                        propImpulse.append(tmpPropImp)
-                        peakBrakeF.append(tmpPkBrake)
+                        VALRs.append(calcVLR(forceZ, RHS[jj]+1, 150, timeToLoad, freq))
+                        CTs.append((RTO[jj] - RHS[jj])/freq)
+                        StrideTime.append((RHS[jj+1] - RHS[jj])/freq)
+                        StrideDist.append((RHS[jj+1] - RHS[jj])/freq*abs(speed))
+                        PkMed.append(np.max(MForce[RHS[jj]:RTO[jj]]))
+                        PkLat.append(np.min(MForce[RHS[jj]:RTO[jj]]))
+                        brakeImpulse.append(sum(i for i in brakeFilt[RHS[jj]:RTO[jj]] if i < 0)/freq)
+                        propImpulse.append(sum(i for i in brakeFilt[RHS[jj]:RTO[jj]] if i > 0)/freq)
+                        peakBrakeF.append(np.min(brakeFilt[RHS[jj]:RTO[jj]]))
                         COMWork_pos.append(RCW_pos[cc])
                         COMWork_neg.append(RCW_neg[cc])
 
@@ -549,16 +660,22 @@ for ii, entry in enumerate(entries):
                         oSlope.append(tmpSlope)
                         oSesh.append(tmpOrd)
                         oSpeed.append(abs(speed))
+                        oMass.append(mass)
                         Side.append('Right')
+                        oLRmethod.append(LR_method)
                     except:
                         print(RHS[jj])
 
 outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Order': list(oSesh),
-                         'Side': list(Side), 'CT':list(CTs), 'StrideTime': list(StrideTime), 'StrideDist': list(StrideDist), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
+                         'Mass': list(oMass), 'Side': list(Side), 'LR_method': list(oLRmethod), 'CT':list(CTs), 'StrideTime': list(StrideTime), 'StrideDist': list(StrideDist), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
                          'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
                          'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
                          'AnkWork_pos': list(AnkWork_pos), 'AnkWork_neg': list(AnkWork_neg)})
-                          
+
+# COM work per meter (cost of transport): stride work / stride distance [J/m]
+outcomes['COMWork_pos_dis'] = outcomes['COMWork_pos']/outcomes['StrideDist']
+outcomes['COMWork_neg_dis'] = outcomes['COMWork_neg']/outcomes['StrideDist']
+
 
 if save_on == 1:
     outfileName = fPath + '0_TreadmillOutcomes_v3.csv'

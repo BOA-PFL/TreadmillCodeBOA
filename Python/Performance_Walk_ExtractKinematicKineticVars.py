@@ -7,8 +7,17 @@ at the top.
 manualTrim = 1 means you want to plot each force time series 
 and select when the trial starts and ends
 plottingEnabled will show a plot for each iteration (not recommended)
-fThresh is the force threshold to set force to 0 
+fThresh is the force threshold to set force to 0
 @author: Daniel.Feeney
+
+Notes:
+    Updated 10/2026 (E. Honert): COM work is also output per meter
+    (COMWork_pos_dis, COMWork_neg_dis [J/m] = stride work / stride distance;
+    stride distance = stride time x belt speed). On a treadmill at a set
+    speed, a configuration that lengthens the stride does more work per
+    stride but covers more distance, so J/m (cost of transport) is the
+    preferred energy efficiency metric. Body mass (Mass) is output to
+    compute J/kg/m.
 """
 
 import pandas as pd
@@ -244,6 +253,7 @@ oConfig = []
 oSlope = []
 oSesh = []
 oSpeed = []
+oMass = []
 Side = []
 
 # Force Plate Variables
@@ -353,16 +363,20 @@ for ii in range(len(entries)):
 
         # GS: good strides - make sure that there are no cross over steps & that
         # the athlete has reached steady state: the athlete is often getting
-        # up to speed during the first 20 seconds of the trial
+        # up to speed during the first 20 seconds of the trial. The stride
+        # must also contain exactly 1 opposite foot contact (no missed contacts),
+        # as the stride distance is used to compute COM work per meter.
         LGS = []
         for jj in range(len(LHS)-1):
-            if LHS[jj] > steady_time*freq and LHS[jj+1] - LHS[jj] > timemin*freq and LHS[jj+1] - LHS[jj] < timemax*freq and min(RGRF[LHS[jj]:LHS[jj+1],2]) == 0:
+            n_opp = np.sum((RHS > LHS[jj]) & (RHS < LHS[jj+1]))
+            if LHS[jj] > steady_time*freq and LHS[jj+1] - LHS[jj] > timemin*freq and LHS[jj+1] - LHS[jj] < timemax*freq and min(RGRF[LHS[jj]:LHS[jj+1],2]) == 0 and n_opp == 1:
                 LGS.append(jj)
         LGS = np.array(LGS)
 
         RGS = []
         for jj in range(len(RHS)-1):
-            if RHS[jj] > steady_time*freq and RHS[jj+1] - RHS[jj] > timemin*freq and RHS[jj+1] - RHS[jj] < timemax*freq and min(LGRF[RHS[jj]:RHS[jj+1],2]) == 0:
+            n_opp = np.sum((LHS > RHS[jj]) & (LHS < RHS[jj+1]))
+            if RHS[jj] > steady_time*freq and RHS[jj+1] - RHS[jj] > timemin*freq and RHS[jj+1] - RHS[jj] < timemax*freq and min(LGRF[RHS[jj]:RHS[jj+1],2]) == 0 and n_opp == 1:
                 RGS.append(jj)
         RGS = np.array(RGS)
 
@@ -398,55 +412,50 @@ for ii in range(len(entries)):
             print('Estimating point estimates \n')
 
             # Index through left force plate good strides
-            # Note: every value for a stride is computed before any list is
-            # appended so that an exception cannot misalign the output rows
             for cc, jj in enumerate(LGS):
                     try:
                         # Compute force-based metrics
                         # Loading Rate: used for fit purposes, not injury
-                        tmpVALR = calcVLR(LGRF[:,2], LHS[jj]+1, 150, timeToLoad, freq)
+                        VALRs.append(calcVLR(LGRF[:,2], LHS[jj]+1, 150, timeToLoad, freq))
                         # Contact Time
-                        tmpCT = (LTO[jj] - LHS[jj])/freq
+                        CTs.append((LTO[jj] - LHS[jj])/freq)
                         # Stride time and distance: foot contact to the
                         # subsequent foot contact of the same foot
-                        tmpStrideTime = (LHS[jj+1] - LHS[jj])/freq
-                        tmpStrideDist = tmpStrideTime*abs(speed)
+                        StrideTime.append((LHS[jj+1] - LHS[jj])/freq)
+                        StrideDist.append((LHS[jj+1] - LHS[jj])/freq*abs(speed))
                         # Peak Medial/Lateral forces
-                        tmpPkMed = np.max(LMForce[LHS[jj]:LTO[jj]])
-                        tmpPkLat = np.min(LMForce[LHS[jj]:LTO[jj]])
+                        PkMed.append(np.max(LMForce[LHS[jj]:LTO[jj]]))
+                        PkLat.append(np.min(LMForce[LHS[jj]:LTO[jj]]))
                         # Braking and Propulsive Force Metrics
-                        tmpBrakeImp = sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i < 0)/freq
-                        tmpPropImp = sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i > 0)/freq
-                        tmpPkBrake = np.min(LBrakeFilt[LHS[jj]:LTO[jj]])
+                        brakeImpulse.append(sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i < 0)/freq) #sum all negative brake force vals
+                        propImpulse.append(sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i > 0)/freq) #sum all positive values
+                        peakBrakeF.append(np.min(LBrakeFilt[LHS[jj]:LTO[jj]]))
+                        COMWork_pos.append(LCW_pos[cc])
+                        COMWork_neg.append(LCW_neg[cc])
 
                         # MoCap+ metrics
                         # Only for downhill metrics
-                        tmpAnkEvVel = np.nan; tmpAnkWork_pos = np.nan; tmpAnkWork_neg = np.nan
                         if tmpCond == 'Downhill':
                             # Only compute ankle and foot metrics from stable kinematic data
                             # Peak Ankle Eversion Velocity: Fit Metric
                             idx20 = round(0.2*(LTO[jj] - LHS[jj])) + LHS[jj]
                             if sum(np.isnan(dat.RFootPosDetect[LHS[jj]-20:idx20])) == 0:
-                                tmpAnkEvVel = abs(np.min(dat.RAnkleAngVel_Frontal[LHS[jj]-20:idx20]))
+                                pAnkEvVel.append(abs(np.min(dat.RAnkleAngVel_Frontal[LHS[jj]-20:idx20])))
+                            else:
+                                pAnkEvVel.append(np.nan)
 
                             if sum(np.isnan(dat.RFootPosDetect[LHS[jj]:LTO[jj]])) == 0 and np.max(abs(dat.RightAnklePower[LHS[jj]:LHS[jj+1]])) < 2000:
                                 # Ankle Work: Endurance/Health Metric
-                                [tmpAnkWork_pos,tmpAnkWork_neg] = findPosNegWork(dat.RightAnklePower[LHS[jj]:LTO[jj]],freq)
-
-                        VALRs.append(tmpVALR)
-                        CTs.append(tmpCT)
-                        StrideTime.append(tmpStrideTime)
-                        StrideDist.append(tmpStrideDist)
-                        PkMed.append(tmpPkMed)
-                        PkLat.append(tmpPkLat)
-                        brakeImpulse.append(tmpBrakeImp)
-                        propImpulse.append(tmpPropImp)
-                        peakBrakeF.append(tmpPkBrake)
-                        COMWork_pos.append(LCW_pos[cc])
-                        COMWork_neg.append(LCW_neg[cc])
-                        pAnkEvVel.append(tmpAnkEvVel)
-                        AnkWork_pos.append(tmpAnkWork_pos)
-                        AnkWork_neg.append(tmpAnkWork_neg)
+                                [pos_tmp,neg_tmp] = findPosNegWork(dat.RightAnklePower[LHS[jj]:LTO[jj]],freq)
+                                AnkWork_pos.append(pos_tmp)
+                                AnkWork_neg.append(neg_tmp)
+                            else:
+                                AnkWork_pos.append(np.nan)
+                                AnkWork_neg.append(np.nan)
+                        else:
+                            pAnkEvVel.append(np.nan)
+                            AnkWork_pos.append(np.nan)
+                            AnkWork_neg.append(np.nan)
 
                         # Append study details
                         oSub.append(tmpSub)
@@ -454,6 +463,7 @@ for ii in range(len(entries)):
                         oSlope.append(tmpSlope)
                         oSesh.append(tmpOrder)
                         oSpeed.append(abs(speed))
+                        oMass.append(BM)
                         Side.append(LPlateSide)
                     except:
                         print(LHS[jj])
@@ -462,25 +472,15 @@ for ii in range(len(entries)):
             for cc, jj in enumerate(RGS):
                     try:
                         # Compute force-based metrics
-                        tmpVALR = calcVLR(RGRF[:,2], RHS[jj]+1, 150, timeToLoad, freq)
-                        tmpCT = (RTO[jj] - RHS[jj])/freq
-                        tmpStrideTime = (RHS[jj+1] - RHS[jj])/freq
-                        tmpStrideDist = tmpStrideTime*abs(speed)
-                        tmpPkMed = np.max(RMForce[RHS[jj]:RTO[jj]])
-                        tmpPkLat = np.min(RMForce[RHS[jj]:RTO[jj]])
-                        tmpBrakeImp = sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i < 0)/freq
-                        tmpPropImp = sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i > 0)/freq
-                        tmpPkBrake = np.min(RBrakeFilt[RHS[jj]:RTO[jj]])
-
-                        VALRs.append(tmpVALR)
-                        CTs.append(tmpCT)
-                        StrideTime.append(tmpStrideTime)
-                        StrideDist.append(tmpStrideDist)
-                        PkMed.append(tmpPkMed)
-                        PkLat.append(tmpPkLat)
-                        brakeImpulse.append(tmpBrakeImp)
-                        propImpulse.append(tmpPropImp)
-                        peakBrakeF.append(tmpPkBrake)
+                        VALRs.append(calcVLR(RGRF[:,2], RHS[jj]+1, 150, timeToLoad, freq))
+                        CTs.append((RTO[jj] - RHS[jj])/freq)
+                        StrideTime.append((RHS[jj+1] - RHS[jj])/freq)
+                        StrideDist.append((RHS[jj+1] - RHS[jj])/freq*abs(speed))
+                        PkMed.append(np.max(RMForce[RHS[jj]:RTO[jj]]))
+                        PkLat.append(np.min(RMForce[RHS[jj]:RTO[jj]]))
+                        brakeImpulse.append(sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i < 0)/freq)
+                        propImpulse.append(sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i > 0)/freq)
+                        peakBrakeF.append(np.min(RBrakeFilt[RHS[jj]:RTO[jj]]))
                         COMWork_pos.append(RCW_pos[cc])
                         COMWork_neg.append(RCW_neg[cc])
 
@@ -495,16 +495,21 @@ for ii in range(len(entries)):
                         oSlope.append(tmpSlope)
                         oSesh.append(tmpOrder)
                         oSpeed.append(abs(speed))
+                        oMass.append(BM)
                         Side.append(RPlateSide)
                     except:
                         print(RHS[jj])
             
         ### Append into DF and Save if save turned on ###
 outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Order': list(oSesh),
-                                     'Side': list(Side), 'CT':list(CTs), 'StrideTime': list(StrideTime), 'StrideDist': list(StrideDist), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
+                                     'Mass': list(oMass), 'Side': list(Side), 'CT':list(CTs), 'StrideTime': list(StrideTime), 'StrideDist': list(StrideDist), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
                                      'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
                                      'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
                                      'AnkWork_pos':list(AnkWork_pos), 'AnkWork_neg':list(AnkWork_neg)})
+
+# COM work per meter (cost of transport): stride work / stride distance [J/m]
+outcomes['COMWork_pos_dis'] = outcomes['COMWork_pos']/outcomes['StrideDist']
+outcomes['COMWork_neg_dis'] = outcomes['COMWork_neg']/outcomes['StrideDist']
 
             
 if save_on == 1:
