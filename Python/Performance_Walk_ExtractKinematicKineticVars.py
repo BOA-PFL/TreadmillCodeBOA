@@ -7,8 +7,17 @@ at the top.
 manualTrim = 1 means you want to plot each force time series 
 and select when the trial starts and ends
 plottingEnabled will show a plot for each iteration (not recommended)
-fThresh is the force threshold to set force to 0 
+fThresh is the force threshold to set force to 0
 @author: Daniel.Feeney
+
+Notes:
+    Updated 10/2026 (E. Honert): COM work is also output per meter
+    (COMWork_pos_dis, COMWork_neg_dis [J/m] = stride work / stride distance;
+    stride distance = stride time x belt speed). On a treadmill at a set
+    speed, a configuration that lengthens the stride does more work per
+    stride but covers more distance, so J/m (cost of transport) is the
+    preferred energy efficiency metric. Body mass (Mass) is output to
+    compute J/kg/m.
 """
 
 import pandas as pd
@@ -33,6 +42,7 @@ entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTe
 fThresh = 50 #below this value will be set to 0.
 lookFwd = 50
 timeToLoad = 150 #length to look forward for an impact peak
+steady_time = 20 #time at the start of the trial to disregard while the athlete gets up to speed [sec]
 save_on = 0
 debug = 1
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
@@ -141,10 +151,10 @@ def COMPower_Work_walking(LeftGRF,RightGRF,slope,walk_speed,LeftHS,RightHS,LeftG
     LCW_pos = []; LCW_neg = []
     RCW_pos = []; RCW_neg = []
 
-    LCOM_power_store = np.zeros((101,len(LeftGS)-1))
-    RCOM_power_store = np.zeros((101,len(RightGS)-1))
+    LCOM_power_store = np.zeros((101,len(LeftGS)))
+    RCOM_power_store = np.zeros((101,len(RightGS)))
     # Index through the good strides for computing Left COM Power + Work
-    for cc, jj in enumerate(LeftGS[:-1]):
+    for cc, jj in enumerate(LeftGS):
         acc_stride = acc[LeftHS[jj]:LeftHS[jj+1],:]
         time_stride = np.array(range(len(acc_stride)))/freq
         com_vel = cumulative_trapezoid(acc_stride,time_stride,initial=0,axis=0)
@@ -161,7 +171,7 @@ def COMPower_Work_walking(LeftGRF,RightGRF,slope,walk_speed,LeftHS,RightHS,LeftG
         LCOM_power_store[:,cc] = f(np.linspace(0,len(com_power_lead)-1,101))
 
     # Index through the good strides for computing Right COM Power + Work
-    for cc, jj in enumerate(RightGS[:-1]):
+    for cc, jj in enumerate(RightGS):
         acc_stride = acc[RightHS[jj]:RightHS[jj+1],:]
         time_stride = np.array(range(len(acc_stride)))/freq
         com_vel = cumulative_trapezoid(acc_stride,time_stride,initial=0,axis=0)
@@ -243,10 +253,13 @@ oConfig = []
 oSlope = []
 oSesh = []
 oSpeed = []
+oMass = []
 Side = []
 
 # Force Plate Variables
 CTs = []
+StrideTime = []
+StrideDist = []
 VALRs = []
 PkMed = []
 PkLat = []
@@ -320,17 +333,19 @@ for ii in range(len(entries)):
         RGRF[idx,:] = 0
 
         # Find the landings and takeoffs for each side
+        # Note: if the trial ends mid-step, the last landing has no take-off
+        # and is removed so that the landings and take-offs are paired
         LHS = np.array(findLandings(LGRF[:,2], fThresh))
         LTO = findTakeoffs(LGRF[:,2], fThresh)
         LTO = np.array(trimTakeoffs(LHS, LTO))
         if LHS[-1] > LTO[-1]:
-            LTO = LTO[0:-1]
+            LHS = LHS[0:-1]
 
         RHS = np.array(findLandings(RGRF[:,2], fThresh))
         RTO = findTakeoffs(RGRF[:,2], fThresh)
         RTO = np.array(trimTakeoffs(RHS, RTO))
         if RHS[-1] > RTO[-1]:
-            RTO = RTO[0:-1]
+            RHS = RHS[0:-1]
 
         # Medial force for each side
         LMForce = LGRF[:,0]
@@ -347,145 +362,171 @@ for ii in range(len(entries)):
         timemax = 2
 
         # GS: good strides - make sure that there are no cross over steps & that
-        # the athlete has reached steady state
+        # the athlete has reached steady state: the athlete is often getting
+        # up to speed during the first 20 seconds of the trial. The stride
+        # must also contain exactly 1 opposite foot contact (no missed contacts),
+        # as the stride distance is used to compute COM work per meter.
         LGS = []
-        for jj in range(6,len(LHS)-1):
-            if LHS[jj+1] - LHS[jj] > timemin*freq and LHS[jj+1] - LHS[jj] < timemax*freq and min(RGRF[LHS[jj]:LHS[jj+1],2]) == 0:
+        for jj in range(len(LHS)-1):
+            n_opp = np.sum((RHS > LHS[jj]) & (RHS < LHS[jj+1]))
+            if LHS[jj] > steady_time*freq and LHS[jj+1] - LHS[jj] > timemin*freq and LHS[jj+1] - LHS[jj] < timemax*freq and min(RGRF[LHS[jj]:LHS[jj+1],2]) == 0 and n_opp == 1:
                 LGS.append(jj)
         LGS = np.array(LGS)
 
         RGS = []
-        for jj in range(6,len(RHS)-1):
-            if RHS[jj+1] - RHS[jj] > timemin*freq and RHS[jj+1] - RHS[jj] < timemax*freq and min(LGRF[RHS[jj]:RHS[jj+1],2]) == 0:
+        for jj in range(len(RHS)-1):
+            n_opp = np.sum((LHS > RHS[jj]) & (LHS < RHS[jj+1]))
+            if RHS[jj] > steady_time*freq and RHS[jj+1] - RHS[jj] > timemin*freq and RHS[jj+1] - RHS[jj] < timemax*freq and min(LGRF[RHS[jj]:RHS[jj+1],2]) == 0 and n_opp == 1:
                 RGS.append(jj)
         RGS = np.array(RGS)
 
         # Compute COM work
-        [tmpLCW_pos,tmpLCW_neg,tmpRCW_pos,tmpRCW_neg,LCOMdebug,RCOMdebug,BM] = COMPower_Work_walking(LGRF,RGRF,ang,speed,LHS,RHS,LGS,RGS,freq)
-        COMWork_pos.extend(tmpLCW_pos); COMWork_pos.extend(tmpRCW_pos)
-        COMWork_neg.extend(tmpLCW_neg); COMWork_neg.extend(tmpRCW_neg)
+        [LCW_pos,LCW_neg,RCW_pos,RCW_neg,LCOMdebug,RCOMdebug,BM] = COMPower_Work_walking(LGRF,RGRF,ang,speed,LHS,RHS,LGS,RGS,freq)
 
-        # Index through left good steps
-        for jj in LGS[:-1]:
-                try:
-                    # Compute force-based metrics
-                    # Loading Rate: used for fit purposes, not injury
-                    VALRs.append(calcVLR(LGRF[:,2], LHS[jj]+1, 150, timeToLoad, freq))
-                    # Contact Time
-                    CTs.append((LTO[jj] - LHS[jj])/freq)
-                    # Peak Medial/Lateral forces
-                    PkMed.append(np.max(LMForce[LHS[jj]:LTO[jj]]))
-                    PkLat.append(np.min(LMForce[LHS[jj]:LTO[jj]]))
-                    # Braking and Propulsive Force Metrics
-                    brakeImpulse.append( sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i < 0)/freq )
-                    propImpulse.append( sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i > 0)/freq )
-                    peakBrakeF.append(np.min(LBrakeFilt[LHS[jj]:LTO[jj]]))
+        # Note: for downhill (backwards walking) the participant faces the
+        # opposite direction on the treadmill, so the left force plate is
+        # the right leg and vice versa. The Side output is body-based.
+        if tmpCond == 'Downhill':
+            LPlateSide = 'Right'; RPlateSide = 'Left'
+        else:
+            LPlateSide = 'Left'; RPlateSide = 'Right'
 
-                    # MoCap+ metrics
-                    # Only for downhill metrics
-                    if tmpCond == 'Downhill':
-                        # Only compute ankle and foot metrics from stable kinematic data
-                        # Peak Ankle Eversion Velocity: Fit Metric
-                        idx20 = round(0.2*(LTO[jj] - LHS[jj])) + LHS[jj]
-                        if sum(np.isnan(dat.RFootPosDetect[LHS[jj]-20:idx20])) == 0:
-                            pAnkEvVel.append(abs(np.min(dat.RAnkleAngVel_Frontal[LHS[jj]-20:idx20])))
+        #______________________________________________________________
+        # Debugging: Creation of dialog box for looking where foot contact are accurate
+        answer = True # Defaulting to true: In case "debug" is not used
+        if debug == 1:
+            makeVizPlotForce(LGRF, RGRF, LHS, RHS, LGS, RGS, downhill=(tmpCond == 'Downhill'))
+            answer = messagebox.askyesno("Question","Is data clean?")
+
+            if answer == False:
+                plt.close('all')
+                print('Adding file to bad file list')
+                badFileList.append(fName)
+
+        if answer == True:
+            saveFolder = fPath + 'TreadmillPlots'
+            if os.path.exists(saveFolder) == False:
+              os.mkdir(saveFolder)
+            plt.savefig(saveFolder + '/' + fName.split('.csv')[0] +'.png')
+            plt.close('all')
+            print('Estimating point estimates \n')
+
+            # Index through left force plate good strides
+            for cc, jj in enumerate(LGS):
+                    try:
+                        # Compute force-based metrics
+                        # Loading Rate: used for fit purposes, not injury
+                        VALRs.append(calcVLR(LGRF[:,2], LHS[jj]+1, 150, timeToLoad, freq))
+                        # Contact Time
+                        CTs.append((LTO[jj] - LHS[jj])/freq)
+                        # Stride time and distance: foot contact to the
+                        # subsequent foot contact of the same foot
+                        StrideTime.append((LHS[jj+1] - LHS[jj])/freq)
+                        StrideDist.append((LHS[jj+1] - LHS[jj])/freq*abs(speed))
+                        # Peak Medial/Lateral forces
+                        PkMed.append(np.max(LMForce[LHS[jj]:LTO[jj]]))
+                        PkLat.append(np.min(LMForce[LHS[jj]:LTO[jj]]))
+                        # Braking and Propulsive Force Metrics
+                        brakeImpulse.append(sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i < 0)/freq) #sum all negative brake force vals
+                        propImpulse.append(sum(i for i in LBrakeFilt[LHS[jj]:LTO[jj]] if i > 0)/freq) #sum all positive values
+                        peakBrakeF.append(np.min(LBrakeFilt[LHS[jj]:LTO[jj]]))
+                        COMWork_pos.append(LCW_pos[cc])
+                        COMWork_neg.append(LCW_neg[cc])
+
+                        # MoCap+ metrics
+                        # Only for downhill metrics
+                        if tmpCond == 'Downhill':
+                            # Only compute ankle and foot metrics from stable kinematic data
+                            # Peak Ankle Eversion Velocity: Fit Metric
+                            idx20 = round(0.2*(LTO[jj] - LHS[jj])) + LHS[jj]
+                            if sum(np.isnan(dat.RFootPosDetect[LHS[jj]-20:idx20])) == 0:
+                                pAnkEvVel.append(abs(np.min(dat.RAnkleAngVel_Frontal[LHS[jj]-20:idx20])))
+                            else:
+                                pAnkEvVel.append(np.nan)
+
+                            if sum(np.isnan(dat.RFootPosDetect[LHS[jj]:LTO[jj]])) == 0 and np.max(abs(dat.RightAnklePower[LHS[jj]:LHS[jj+1]])) < 2000:
+                                # Ankle Work: Endurance/Health Metric
+                                [pos_tmp,neg_tmp] = findPosNegWork(dat.RightAnklePower[LHS[jj]:LTO[jj]],freq)
+                                AnkWork_pos.append(pos_tmp)
+                                AnkWork_neg.append(neg_tmp)
+                            else:
+                                AnkWork_pos.append(np.nan)
+                                AnkWork_neg.append(np.nan)
                         else:
                             pAnkEvVel.append(np.nan)
-
-                        if sum(np.isnan(dat.RFootPosDetect[LHS[jj]:LTO[jj]])) == 0 and np.max(abs(dat.RightAnklePower[LHS[jj]:LHS[jj+1]])) < 2000:
-                            # Ankle Work: Endurance/Health Metric
-                            [pos_tmp,neg_tmp] = findPosNegWork(dat.RightAnklePower[LHS[jj]:LTO[jj]],freq)
-                            AnkWork_pos.append(pos_tmp)
-                            AnkWork_neg.append(neg_tmp)
-
-                        else:
                             AnkWork_pos.append(np.nan)
                             AnkWork_neg.append(np.nan)
-                    # For uphill, forward walking conditions
-                    else:
+
+                        # Append study details
+                        oSub.append(tmpSub)
+                        oConfig.append(tmpConfig)
+                        oSlope.append(tmpSlope)
+                        oSesh.append(tmpOrder)
+                        oSpeed.append(abs(speed))
+                        oMass.append(BM)
+                        Side.append(LPlateSide)
+                    except:
+                        print(LHS[jj])
+
+            # Index through right force plate good strides
+            for cc, jj in enumerate(RGS):
+                    try:
+                        # Compute force-based metrics
+                        VALRs.append(calcVLR(RGRF[:,2], RHS[jj]+1, 150, timeToLoad, freq))
+                        CTs.append((RTO[jj] - RHS[jj])/freq)
+                        StrideTime.append((RHS[jj+1] - RHS[jj])/freq)
+                        StrideDist.append((RHS[jj+1] - RHS[jj])/freq*abs(speed))
+                        PkMed.append(np.max(RMForce[RHS[jj]:RTO[jj]]))
+                        PkLat.append(np.min(RMForce[RHS[jj]:RTO[jj]]))
+                        brakeImpulse.append(sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i < 0)/freq)
+                        propImpulse.append(sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i > 0)/freq)
+                        peakBrakeF.append(np.min(RBrakeFilt[RHS[jj]:RTO[jj]]))
+                        COMWork_pos.append(RCW_pos[cc])
+                        COMWork_neg.append(RCW_neg[cc])
+
+                        # MoCap+ metrics not available for right force plate currently
                         pAnkEvVel.append(np.nan)
                         AnkWork_pos.append(np.nan)
                         AnkWork_neg.append(np.nan)
 
-                    # Append study details
-                    oSub.append(tmpSub)
-                    oConfig.append(tmpConfig)
-                    oSlope.append(tmpSlope)
-                    oSesh.append(tmpOrder)
-                    oSpeed.append(abs(speed))
-                    Side.append('Left')
-                except:
-                    print(LHS[jj])
-
-        # Index through right good steps
-        for jj in RGS[:-1]:
-                try:
-                    # Compute force-based metrics
-                    VALRs.append(calcVLR(RGRF[:,2], RHS[jj]+1, 150, timeToLoad, freq))
-                    CTs.append((RTO[jj] - RHS[jj])/freq)
-                    PkMed.append(np.max(RMForce[RHS[jj]:RTO[jj]]))
-                    PkLat.append(np.min(RMForce[RHS[jj]:RTO[jj]]))
-                    brakeImpulse.append( sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i < 0)/freq )
-                    propImpulse.append( sum(i for i in RBrakeFilt[RHS[jj]:RTO[jj]] if i > 0)/freq )
-                    peakBrakeF.append(np.min(RBrakeFilt[RHS[jj]:RTO[jj]]))
-
-                    # MoCap+ metrics not available for right side currently
-                    pAnkEvVel.append(np.nan)
-                    AnkWork_pos.append(np.nan)
-                    AnkWork_neg.append(np.nan)
-
-                    # Append study details
-                    oSub.append(tmpSub)
-                    oConfig.append(tmpConfig)
-                    oSlope.append(tmpSlope)
-                    oSesh.append(tmpOrder)
-                    oSpeed.append(abs(speed))
-                    Side.append('Right')
-                except:
-                    print(RHS[jj])
-        
-        # Debugging plots:  
-        
-        if tmpCond == 'Downhill' and debug == 1:
-            makeVizPlotForce(LGRF, RGRF, LHS, RHS, LGS, RGS, downhill=True)
-            answer = messagebox.askyesno("Question","Is data clean?")
-
-        if tmpCond == 'Uphill' and debug == 1:
-            makeVizPlotForce(LGRF, RGRF, LHS, RHS, LGS, RGS, downhill=False)
-            answer = messagebox.askyesno("Question","Is data clean?")
-            
-        if answer == False:
-            plt.close('all')
-            print('Adding file to bad file list')
-            badFileList.append(fName)
-            
-        if answer == True:
-            saveFolder = fPath + 'TreadmillPlots'
-            if os.path.exists(saveFolder) == False:
-              os.mkdir(saveFolder) 
-            plt.savefig(saveFolder + '/' + fName.split('.csv')[0] +'.png')
-            plt.close('all')
-            print('Estimating point estimates \n')
+                        # Append study details
+                        oSub.append(tmpSub)
+                        oConfig.append(tmpConfig)
+                        oSlope.append(tmpSlope)
+                        oSesh.append(tmpOrder)
+                        oSpeed.append(abs(speed))
+                        oMass.append(BM)
+                        Side.append(RPlateSide)
+                    except:
+                        print(RHS[jj])
             
         ### Append into DF and Save if save turned on ###
 outcomes = pd.DataFrame({'Subject':list(oSub), 'Config': list(oConfig),'Slope': list(oSlope),'Speed': list(oSpeed), 'Order': list(oSesh),
-                                     'Side': list(Side), 'CT':list(CTs), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
+                                     'Mass': list(oMass), 'Side': list(Side), 'CT':list(CTs), 'StrideTime': list(StrideTime), 'StrideDist': list(StrideDist), 'VALR': list(VALRs), 'pMF':list(PkMed), 'pLF':list(PkLat),
                                      'pBF': list(peakBrakeF), 'brakeImpulse': list(brakeImpulse), 'PropImp':list(propImpulse),
                                      'pAnkEvVel': list(pAnkEvVel), 'COMWork_pos': list(COMWork_pos), 'COMWork_neg': list(COMWork_neg),
                                      'AnkWork_pos':list(AnkWork_pos), 'AnkWork_neg':list(AnkWork_neg)})
 
+# COM work per meter (cost of transport): stride work / stride distance [J/m]
+outcomes['COMWork_pos_dis'] = outcomes['COMWork_pos']/outcomes['StrideDist']
+outcomes['COMWork_neg_dis'] = outcomes['COMWork_neg']/outcomes['StrideDist']
+
             
 if save_on == 1:
     outfileName = fPath + '0_TreadmillOutcomes_test.csv'
-    outcomes.to_csv(outfileName, index = False)
-    
+    badfileName = fPath + 'BadFiles.csv'
+    # Note: badFileList is a list, so convert it to a dataframe for saving
+    badFileDF = pd.DataFrame({'BadFiles': badFileList})
+
+    # Write a new file with a header if one does not exist, otherwise append
     if os.path.exists(outfileName) == False:
-        
         outcomes.to_csv(outfileName, mode='a', header=True, index = False)
-        badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = True, index = False)
-    
     else:
-        outcomes.to_csv(outfileName, mode='a', header=False, index = False) 
-        badFileList.to_csv(fPath + 'BadFiles.csv', mode = 'a', header = False, index = False)
+        outcomes.to_csv(outfileName, mode='a', header=False, index = False)
+
+    if os.path.exists(badfileName) == False:
+        badFileDF.to_csv(badfileName, mode = 'a', header = True, index = False)
+    else:
+        badFileDF.to_csv(badfileName, mode = 'a', header = False, index = False)
     
 
