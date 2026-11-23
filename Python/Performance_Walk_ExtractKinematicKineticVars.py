@@ -28,15 +28,49 @@ import os
 import scipy
 import scipy.signal as sig
 from scipy.integrate import cumulative_trapezoid
+import tkinter as tk
 from tkinter import messagebox
 from TreadmillFunctions import (findLandings, findTakeoffs, calcVLR,
                                  calcPeakBrake, findNextZero, delimitTrial,
                                  filterForce, trimForce, trimLandings,
-                                 trimTakeoffs, forceMatrix, findPosNegWork)
+                                 trimTakeoffs, forceMatrix, findPosNegWork,
+                                 loadProcessingDecisions, saveProcessingDecision)
 
 
 fPath = 'Z:\\Testing Segments\\WorkWear\\2025\\2025_WWDrape_Materials_Danner\\Treadmill\\'
-entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt')]
+entries = [fName for fName in os.listdir(fPath) if fName.endswith('PerformanceTestData_V2.txt') and not fName.startswith('0_')]
+
+# Names this script's decision file, 0_ProcessingDecisions_<scriptName>.csv.
+# One data folder is often read by several scripts, and a trial that is no
+# good for one analysis can be fine for another, so each keeps its own
+# record rather than one script's rejection governing the rest.
+scriptName = 'Walk_KinematicKinetic'
+
+# Data-quality decisions recorded by previous runs of this script. Loading
+# these is what stops a trial being judged twice. Rejected files are left
+# where they are so they can still be opened and looked at - it is this
+# record, not the folder, that decides what gets processed.
+decisions = loadProcessingDecisions(fPath, scriptName)
+
+# Results from an out-of-date copy of this script will not match anyone
+# else's. Asked only when nothing has been decided here yet: a decision file
+# means the question was answered on an earlier run of this dataset.
+if len(decisions) == 0:
+    # Give this dialog its own window and put it in front. It is the first
+    # thing the script does, so unlike the data check further down there is no
+    # figure on screen to pull focus, and a borrowed default root can open the
+    # box behind Spyder - which just looks like the script has hung.
+    dialogRoot = tk.Tk()
+    dialogRoot.withdraw()
+    dialogRoot.attributes('-topmost', True)
+    upToDate = messagebox.askyesno("Question", "Is this script up to date with main?",
+                                   parent = dialogRoot)
+    dialogRoot.destroy()
+    # A plain error rather than SystemExit: these scripts get run a cell at a
+    # time, and SystemExit can take the console with it. This stops just as
+    # firmly, prints the reason, and leaves the console alone.
+    if upToDate == False:
+        raise RuntimeError('Pull this script from main before processing')
 
 # Define constants and options
 fThresh = 50 #below this value will be set to 0.
@@ -44,7 +78,13 @@ lookFwd = 50
 timeToLoad = 150 #length to look forward for an impact peak
 steady_time = 20 #time at the start of the trial to disregard while the athlete gets up to speed [sec]
 save_on = 0
-debug = 1
+# 0 = no data check, nothing is asked or recorded
+# 1 = ask only about trials with no recorded decision (the normal setting)
+# 2 = re-review EVERY trial, including ones previously rejected. Use after
+#     changing processing, when earlier decisions may no longer hold. This
+#     mode is good for reruning files with a different threshold or examining
+#     files after a different filter has been applied.
+data_check = 1
 pd.options.mode.chained_assignment = None  # default='warn' set to warn for a lot of warnings
 
 
@@ -274,10 +314,23 @@ pAnkEvVel = []
 AnkWork_pos = []
 AnkWork_neg = []
 
-badFileList = []
 ## loop through the selected files
 for ii in range(len(entries)):
     # try:
+        # A trial rejected in a previous run is skipped. The file is still
+        # there to open and look at: the recorded decision governs, not the
+        # folder
+        priorDecision = decisions.get(entries[ii], '')
+        if priorDecision == 'bad' and data_check != 2:
+            print('Previously excluded, skipping: ' + entries[ii])
+            continue
+
+        # Clear the previous trial's cyclic detections. They are assigned
+        # inside conditionals, so a trial that skips a detection would keep
+        # the last trial's events and be processed against them silently.
+        LHS = []; LTO = []; LGS = []
+        RHS = []; RTO = []; RGS = []
+
         fName = entries[ii] #Load one file at a time
         print(fName)
         
@@ -393,21 +446,38 @@ for ii in range(len(entries)):
 
         #______________________________________________________________
         # Debugging: Creation of dialog box for looking where foot contact are accurate
-        answer = True # Defaulting to true: In case "debug" is not used
-        if debug == 1:
+        answer = True # if data check is off.
+        if priorDecision == 'good' and data_check == 1:
+            print('Previously accepted, not asking again: ' + fName)
+        elif data_check >= 1:
             makeVizPlotForce(LGRF, RGRF, LHS, RHS, LGS, RGS, downhill=(tmpCond == 'Downhill'))
             answer = messagebox.askyesno("Question","Is data clean?")
 
             if answer == False:
                 plt.close('all')
                 print('Adding file to bad file list')
-                badFileList.append(fName)
+            else:
+                # The figure is saved here, beside the code that drew it. The
+                # block below is also reached with the data check off and on a
+                # trial accepted in an earlier run, where no figure is open and
+                # savefig would write out a blank one.
+                saveFolder = fPath + 'TreadmillPlots'
+                if os.path.exists(saveFolder) == False:
+                  os.mkdir(saveFolder)
+                plt.savefig(saveFolder + '/' + fName.split('.csv')[0] +'.png')
+
+        # Record the decision straight away, inside the loop, so a run that
+        # fails later keeps every decision made so far
+        if priorDecision == '' or data_check == 2:
+            if answer == False:
+                saveProcessingDecision(fPath, scriptName, entries[ii], 'bad',
+                                       Subject=tmpSub, Config=tmpConfig,
+                                       reason='rejected at the data check')
+            else:
+                saveProcessingDecision(fPath, scriptName, entries[ii], 'good',
+                                       Subject=tmpSub, Config=tmpConfig)
 
         if answer == True:
-            saveFolder = fPath + 'TreadmillPlots'
-            if os.path.exists(saveFolder) == False:
-              os.mkdir(saveFolder)
-            plt.savefig(saveFolder + '/' + fName.split('.csv')[0] +'.png')
             plt.close('all')
             print('Estimating point estimates \n')
 
@@ -512,21 +582,12 @@ outcomes['COMWork_pos_dis'] = outcomes['COMWork_pos']/outcomes['StrideDist']
 outcomes['COMWork_neg_dis'] = outcomes['COMWork_neg']/outcomes['StrideDist']
 
             
-if save_on == 1:
-    outfileName = fPath + '0_TreadmillOutcomes_test.csv'
-    badfileName = fPath + 'BadFiles.csv'
-    # Note: badFileList is a list, so convert it to a dataframe for saving
-    badFileDF = pd.DataFrame({'BadFiles': badFileList})
+outfileName = fPath + '0_TreadmillOutcomes.csv'
 
-    # Write a new file with a header if one does not exist, otherwise append
-    if os.path.exists(outfileName) == False:
-        outcomes.to_csv(outfileName, mode='a', header=True, index = False)
-    else:
-        outcomes.to_csv(outfileName, mode='a', header=False, index = False)
-
-    if os.path.exists(badfileName) == False:
-        badFileDF.to_csv(badfileName, mode = 'a', header = True, index = False)
-    else:
-        badFileDF.to_csv(badfileName, mode = 'a', header = False, index = False)
+if save_on == 1 and data_check < 2:
+    # Written fresh each run, never appended. Appending duplicates every row
+    # when a study is re-processed after more data is collected, and a trial
+    # rejected on a later pass would keep its old row alongside the rejection.
+    outcomes.to_csv(outfileName, header=True, index = False)
     
 
