@@ -290,6 +290,12 @@ level = []
 
 ## loop through the selected files
 for file in entries:
+    # Clear the previous trial's cyclic detections. They are assigned
+    # inside conditionals, so a trial that skips a detection would keep
+    # the last trial's events and be processed against them silently.
+    landings = []
+    takeoffs = []
+
     try:
         
         fName = file #Load one file at a time

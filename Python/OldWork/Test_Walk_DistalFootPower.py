@@ -314,6 +314,13 @@ SwingForce = []
 avgFootPow = np.zeros((101,len(entries_footwork)))
 
 for ii in range(0,len(entries_footwork)):
+    # Clear the previous trial's cyclic detections. They are assigned
+    # inside conditionals, so a trial that skips a detection would keep
+    # the last trial's events and be processed against them silently.
+    landings = []
+    takeoffs = []
+    GS = []
+
     fName = entries_footwork[ii] #Load one file at a time
     #Parse file name into subject and configuration 
     subName = fName.split(sep = "_")[0]

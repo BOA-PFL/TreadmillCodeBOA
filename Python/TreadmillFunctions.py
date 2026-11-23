@@ -8,9 +8,12 @@ Performance_Run_ExtractKinematicKineticVars.py.
 """
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import os
 import scipy
 import scipy.signal as sig
+from datetime import datetime
 
 
 def findLandings(force, fThresh):
@@ -350,3 +353,119 @@ def findPosNegWork(var, freq):
     neg_work = scipy.integrate.trapezoid(neg_var,dx = 1/freq)
 
     return [pos_work,neg_work]
+
+
+#______________________________________________________________________________
+# Processing-decision helpers.
+# Note: these two functions are kept byte-identical to the copies in
+# XSENSOR/XSENSORFunctions.py and IMU_BOA/IMUFunctions.py. There is no
+# shared package across the BOA-PFL repos, so if you change one, change the
+# others in the same commit.
+
+
+def loadProcessingDecisions(fPath, scriptName):
+    """
+    Load the data-quality decisions recorded by previous runs of this script.
+
+    Decisions live in 0_ProcessingDecisions_<scriptName>.csv beside the data.
+    The name carries the script because one data folder is often read by
+    several scripts, and they do not judge the same thing - a trial that is
+    unusable for one analysis can be perfectly good for another. A shared file
+    would let one script's rejection silently govern the rest.
+
+    The file is append-only: correcting a decision means adding a later row for
+    the same file rather than editing the original, so the record of what was
+    judged and when is preserved. The most recent row for a file is the one
+    that counts.
+
+    Reading these back is what stops a trial being judged a second time. A file
+    already marked good is processed without the dialog box appearing again.
+
+    Rejected files are left where they are. Nothing is moved out of the folder,
+    so a rejected trial can still be opened and looked at; it is this record,
+    not the folder, that decides what gets processed.
+
+    Parameters
+    ----------
+    fPath : str
+        Path to the folder holding the data and the decision file
+    scriptName : str
+        Short name of the calling script, set as a constant at the top of it
+
+    Returns
+    -------
+    decisions : dict
+        File name -> 'good' or 'bad'. Empty if nothing has been decided yet.
+
+    """
+    decisionFile = fPath + '0_ProcessingDecisions_' + scriptName + '.csv'
+    if os.path.exists(decisionFile) == False:
+        return {}
+
+    dat = pd.read_csv(decisionFile)
+
+    # The latest row for a file wins. Sort on the parsed timestamp, not on the
+    # raw text: opening this file in Excel to correct a decision rewrites every
+    # timestamp into the local format, and sorting those as text puts 9:52
+    # after 10:15 because the hour has no leading zero. A row whose timestamp
+    # will not parse at all is taken as the newest, since that is almost always
+    # someone having typed a correction in by hand.
+    stamps = pd.to_datetime(dat['Timestamp'], errors='coerce', format='mixed')
+    dat['SortStamp'] = stamps
+    dat_sorted = dat.sort_values('SortStamp', kind='stable', na_position='last')
+    latest = dat_sorted.drop_duplicates(subset='FileName', keep='last')
+
+    # Preallocate
+    decisions = {}
+    for ii in range(len(latest)):
+        fName = latest['FileName'].iloc[ii]
+        decisions[fName] = latest['Decision'].iloc[ii]
+
+    return decisions
+
+def saveProcessingDecision(fPath, scriptName, fName, decision, Subject='', Config='', reason=''):
+    """
+    Append one data-quality decision to this script's decision file.
+
+    Call this inside the processing loop, immediately after the decision is
+    made, so that a run which fails part way through still keeps every decision
+    taken up to that point.
+
+    Note: this appends on purpose, and is the one place in these scripts where
+    appending is correct. The file is a decision history that must never be
+    overwritten. Data outputs are a different matter - those are written fresh
+    each run, because appending to them produces duplicate rows.
+
+    Parameters
+    ----------
+    fPath : str
+        Path to the folder holding the data
+    scriptName : str
+        Short name of the calling script, matching loadProcessingDecisions
+    fName : str
+        Name of the file the decision applies to. For IMU trials this is the
+        low-g file, since that is what the processing loops index through.
+    decision : str
+        'good' or 'bad'
+    Subject : str
+        Subject name, for reading the file by eye
+    Config : str
+        Configuration, for reading the file by eye
+    reason : str
+        Free text. Worth filling in when a trial is rejected.
+
+    Returns
+    -------
+    None
+
+    """
+    decisionFile = fPath + '0_ProcessingDecisions_' + scriptName + '.csv'
+    stamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    row = pd.DataFrame({'Timestamp':[stamp], 'FileName':[fName],
+                        'Subject':[Subject], 'Config':[Config],
+                        'Decision':[decision], 'Reason':[reason]})
+
+    # Only write the header when the file is being created
+    writeHeader = os.path.exists(decisionFile) == False
+    row.to_csv(decisionFile, mode='a', header=writeHeader, index=False)

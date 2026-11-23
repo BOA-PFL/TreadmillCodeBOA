@@ -10,13 +10,53 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import tkinter as tk
 from tkinter import messagebox 
+from TreadmillFunctions import loadProcessingDecisions, saveProcessingDecision
 
 fPath = 'C:\\Users\\eric.honert\\Boa Technology Inc\\PFL Team - General\\Testing Segments\\Cycling Performance Tests\\2025_Performance_CyclingLacevBOA_Specialized\\Metabolics\\'
 fileExt = r".xlsx"
-entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt)]
+entries = [fName for fName in os.listdir(fPath) if fName.endswith(fileExt) and not fName.startswith('0_')]
+
+# Names this script's decision file, 0_ProcessingDecisions_<scriptName>.csv.
+# One data folder is often read by several scripts, and a trial that is no
+# good for one analysis can be fine for another, so each keeps its own
+# record rather than one script's rejection governing the rest.
+scriptName = 'Metabolics'
+
+# Data-quality decisions recorded by previous runs of this script. Loading
+# these is what stops a trial being judged twice. Rejected files are left
+# where they are so they can still be opened and looked at - it is this
+# record, not the folder, that decides what gets processed.
+decisions = loadProcessingDecisions(fPath, scriptName)
+
+# Results from an out-of-date copy of this script will not match anyone
+# else's. Asked only when nothing has been decided here yet: a decision file
+# means the question was answered on an earlier run of this dataset.
+if len(decisions) == 0:
+    # Give this dialog its own window and put it in front. It is the first
+    # thing the script does, so unlike the data check further down there is no
+    # figure on screen to pull focus, and a borrowed default root can open the
+    # box behind Spyder - which just looks like the script has hung.
+    dialogRoot = tk.Tk()
+    dialogRoot.withdraw()
+    dialogRoot.attributes('-topmost', True)
+    upToDate = messagebox.askyesno("Question", "Is this script up to date with main?",
+                                   parent = dialogRoot)
+    dialogRoot.destroy()
+    # A plain error rather than SystemExit: these scripts get run a cell at a
+    # time, and SystemExit can take the console with it. This stops just as
+    # firmly, prints the reason, and leaves the console alone.
+    if upToDate == False:
+        raise RuntimeError('Pull this script from main before processing')
 
 save_on = 1
+# 0 = no data check, nothing is asked or recorded
+# 1 = ask only about trials with no recorded decision (the normal setting)
+# 2 = re-review EVERY trial, including ones previously rejected. Use after
+#     changing processing, when earlier decisions may no longer hold. This
+#     mode is good for reruning files with a different threshold or examining
+#     files after a different filter has been applied.
 data_check = 1
 
 ### set plot font size ###
@@ -169,9 +209,25 @@ for fName in entries:
             os.mkdir(saveFolder)
         
         for configLab in configLabels:
+            # The decision is keyed on file AND config, not file alone: one
+            # metabolic file holds several configs and is judged once per
+            # config, so accepting one says nothing about the others.
+            decisionKey = fName + '_' + configLab
+            tmpSub = fName.split('.')[0]
+
+            # A config rejected in a previous run is skipped. The file is
+            # still there to open and look at: the recorded decision governs,
+            # not the folder
+            priorDecision = decisions.get(decisionKey, '')
+            if priorDecision == 'bad' and data_check != 2:
+                print('Previously excluded, skipping: ' + decisionKey)
+                continue
+
             # Create debugging plot
-            answer = True
-            if data_check == 1:
+            answer = True # if data check is off.
+            if priorDecision == 'good' and data_check == 1:
+                print('Previously accepted, not asking again: ' + decisionKey)
+            elif data_check >= 1:
                 degbug2MinEpoch(dat, configLab)
                 plt.savefig(saveFolder + '/' + fName.split('.')[0]+'_'+configLab +'.png')
                 answer = messagebox.askyesno("Question","Is data clean?")
@@ -179,7 +235,18 @@ for fName in entries:
                 if answer == False:
                     print('Adding file to bad file list')
                     badFileList.append(fName)
-            
+
+            # Record the decision straight away, inside the loop, so a run
+            # that fails later keeps every decision made so far
+            if priorDecision == '' or data_check == 2:
+                if answer == False:
+                    saveProcessingDecision(fPath, scriptName, decisionKey, 'bad',
+                                           Subject=tmpSub, Config=configLab,
+                                           reason='rejected at the data check')
+                else:
+                    saveProcessingDecision(fPath, scriptName, decisionKey, 'good',
+                                           Subject=tmpSub, Config=configLab)
+
             if answer == True:
                 print('Estimating point estimates')
                 # 1 min epochs
@@ -208,6 +275,8 @@ outcomes = pd.DataFrame({'Subject':list(subject),'Config':list(config), 'Order':
                          'EE':list(met), 'VO2':list(VO2),'RQ':list(RQ)})
 
 outfileName = fPath+'0_MetabolicOutcomes.csv'
-if save_on == 1:
+if save_on == 1 and data_check < 2:
+    # Note: written fresh each run, never appended. Appending duplicates
+    # every row when a study is re-processed after more data is collected.
     outcomes.to_csv(outfileName, header=True, index = False)
 
